@@ -1,0 +1,30 @@
+{
+  "model_version": "1.0.0",
+  "seed": 42,
+  "dataset": {
+    "path": "backend/models/datasets/raw/MSR_data_cleaned.csv",
+    "text_column": "func_before",
+    "target_column": "Score"
+  },
+  "splits": {
+    "test_size": 0.2,
+    "val_size": 0.2,
+    "stratify": true
+  },
+  "vectorizer": {
+    "max_features": 12000,
+    "ngram_range": [1, 2],
+    "min_df": 2,
+    "max_df": 0.95
+  },
+  "model": {
+    "max_iter": 1500,
+    "class_weight": "balanced",
+    "C": 1.0
+  },
+  "known_limitations": [
+    "Risk labels are mapped from score bins and may lose nuance.",
+    "Does not incorporate exploitability context beyond text."
+  ]
+}
+

@@ -1,0 +1,30 @@
+{
+  "model_version": "1.0.0",
+  "seed": 42,
+  "dataset": {
+    "path": "backend/models/datasets/raw/CVEFixes.csv",
+    "text_column": "code",
+    "target_column": "language"
+  },
+  "splits": {
+    "test_size": 0.2,
+    "val_size": 0.2,
+    "stratify": true
+  },
+  "vectorizer": {
+    "max_features": 12000,
+    "ngram_range": [1, 2],
+    "min_df": 2,
+    "max_df": 0.95
+  },
+  "model": {
+    "max_iter": 1500,
+    "class_weight": "balanced",
+    "C": 1.0
+  },
+  "known_limitations": [
+    "Short snippets can reduce language classification confidence.",
+    "Mixed-language files are represented by a single dominant label."
+  ]
+}
+

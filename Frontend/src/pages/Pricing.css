@@ -1,0 +1,111 @@
+/* Add to index.css or new Pricing.css */
+.pricing-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-bottom: 64px;
+}
+
+.pricing-card {
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(8px);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  position: relative;
+  transition: all 0.3s ease;
+  border: 1px solid var(--border);
+}
+
+.pricing-card.popular {
+  border: 2px solid var(--accent);
+  transform: scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+.pricing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+
+.popular-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-gradient);
+  color: white;
+  padding: 4px 16px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.price {
+  margin: 20px 0 8px;
+}
+
+.price .amount {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.price .period {
+  font-size: 16px;
+  color: var(--text3);
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text2);
+}
+
+.feature svg {
+  color: var(--success);
+  flex-shrink: 0;
+}
+
+.pricing-card .btn {
+  width: 100%;
+  margin-top: 24px;
+  justify-content: center;
+}
+
+.faq-section {
+  text-align: center;
+  padding: 48px 0;
+  border-top: 1px solid var(--border);
+}
+
+.faq-section h3 {
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  text-align: left;
+}
+
+.faq-item strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.faq-item p {
+  font-size: 13px;
+  color: var(--text3);
+  line-height: 1.5;
+}

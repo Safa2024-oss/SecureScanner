@@ -1,0 +1,12 @@
+{
+  "model_name": "confidence",
+  "dataset_name": "CVEFixes.csv",
+  "dataset_path": "C:\\Users\\Ala\\Desktop\\SecureScanner\\backend\\models\\datasets\\raw\\CVEFixes.csv",
+  "dataset_hash": "27411d14137ba8ae8e6dc638991d36c1540c5ac52ab01a11396d545fc12e5dbd",
+  "row_count": 24683,
+  "columns": [
+    "code",
+    "language",
+    "safety"
+  ]
+}

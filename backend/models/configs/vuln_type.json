@@ -1,0 +1,30 @@
+{
+  "model_version": "1.0.0",
+  "seed": 42,
+  "dataset": {
+    "path": "backend/models/datasets/raw/MSR_data_cleaned.csv",
+    "text_column": "func_before",
+    "target_column": "Vulnerability Classification"
+  },
+  "splits": {
+    "test_size": 0.2,
+    "val_size": 0.2,
+    "stratify": true
+  },
+  "vectorizer": {
+    "max_features": 15000,
+    "ngram_range": [1, 2],
+    "min_df": 2,
+    "max_df": 0.95
+  },
+  "model": {
+    "max_iter": 2000,
+    "class_weight": "balanced",
+    "C": 1.0
+  },
+  "known_limitations": [
+    "Long-tail vulnerability classes can still be under-represented.",
+    "Taxonomy consistency depends on dataset label quality."
+  ]
+}
+
