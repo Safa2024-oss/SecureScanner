@@ -10,6 +10,8 @@ from config import (
     STRIPE_STANDARD_YEARLY_PRICE_ID,
     STRIPE_PREMIUM_MONTHLY_PRICE_ID,
     STRIPE_PREMIUM_YEARLY_PRICE_ID,
+    STRIPE_ENTERPRISE_MONTHLY_PRICE_ID,
+    STRIPE_ENTERPRISE_YEARLY_PRICE_ID,
     TRIAL_DAYS,
     SUBSCRIPTION_GRACE_DAYS,
 )
@@ -28,8 +30,9 @@ PLAN_LIMITS = {
     "free": {"scans": 5, "courses": 1, "labs": 1, "certifications": 0, "jobs": 0},
     "standard": {"scans": 100, "courses": 20, "labs": 20, "certifications": 1, "jobs": 10},
     "premium": {"scans": 500, "courses": 999999, "labs": 999999, "certifications": 999999, "jobs": 999999},
-    "enterprise": {"scans": 999999, "courses": 999999, "labs": 999999, "certifications": 999999, "jobs": 999999},
-    "university": {"scans": 999999, "courses": 999999, "labs": 999999, "certifications": 999999, "jobs": 999999},
+    "entreprise": {"scans": 500, "courses": 999999, "labs": 999999, "certifications": 999999, "jobs": 999999},
+
+    
 }
 
 PRICE_MAP = {
@@ -37,6 +40,8 @@ PRICE_MAP = {
     ("standard", "annual"): STRIPE_STANDARD_YEARLY_PRICE_ID,
     ("premium", "monthly"): STRIPE_PREMIUM_MONTHLY_PRICE_ID,
     ("premium", "annual"): STRIPE_PREMIUM_YEARLY_PRICE_ID,
+    ("enterprise", "monthly"): STRIPE_ENTERPRISE_MONTHLY_PRICE_ID,
+    ("enterprise", "annual"): STRIPE_ENTERPRISE_YEARLY_PRICE_ID,
 }
 
 STRIPE_TO_INTERNAL_STATUS = {

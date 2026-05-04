@@ -1,17 +1,16 @@
 import { useMemo, useState } from 'react'
-import { Check, ArrowRight, ShieldCheck, Building2, GraduationCap } from 'lucide-react'
+import { Check, ArrowRight, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import './Pricing.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 const CYCLES = ['monthly', 'annual']
 const PRICING = {
   free: { monthly: 0, annual: 0 },
-  standard: { monthly: 19, annual: 49 },
-  premium: { monthly: 49, annual: 129 },
-  university: { monthly: null, annual: null },
-  enterprise: { monthly: null, annual: null },
+  standard: { monthly: 19, annual: 170 },
+  premium: { monthly: 49, annual: 440 },
+  enterprise: { monthly: 200, annual: 1800 },
 }
 const PLAN_META = [
   {
@@ -34,18 +33,10 @@ const PLAN_META = [
     featureList: ['500 scans/month', 'Team collaboration', 'Premium AI intelligence', 'Compliance exports'],
   },
   {
-    key: 'university',
-    name: 'University',
-    desc: 'Campus-wide security learning and lab access.',
-    featureList: ['Institution onboarding', 'Student seat licensing', 'Academic pricing', 'Dedicated success manager'],
-    quote: true,
-  },
-  {
     key: 'enterprise',
     name: 'Enterprise',
-    desc: 'Enterprise controls, procurement, and SLAs.',
-    featureList: ['Unlimited scale', 'SAML/SSO', 'VPC/compliance options', '24/7 enterprise support'],
-    quote: true,
+    desc: 'Unlimited scale for large teams and organizations.',
+    featureList: ['Unlimited scans', 'Team management', 'SAML/SSO', '24/7 enterprise support', 'Compliance exports', 'VPC options'],
   },
 ]
 
@@ -71,15 +62,6 @@ export default function Pricing() {
       return
     }
     if (plan === 'free') return
-    if (plan === 'enterprise' || plan === 'university') {
-      navigate('/quote')
-      return
-    }
-    // Removed the redirect to /plan-switch – now allows direct checkout
-    // if (currentPlan !== 'free' && currentPlan !== plan) {
-    //   navigate('/plan-switch')
-    //   return
-    
 
     setLoading(plan)
     try {
@@ -109,8 +91,8 @@ export default function Pricing() {
     <div className="pricing-page">
       <div className="page-header" style={{ textAlign: 'center', maxWidth: 820, margin: '0 auto 48px' }}>
         <h1 className="page-title">Security subscriptions built for serious teams</h1>
-        <p className="page-subtitle">Start free, scale to premium, and transition to enterprise procurement when your team is ready.</p>
-        <div className="billing-toggle" style={{ marginTop: 16 }}>
+        <p className="page-subtitle">Start free, scale to premium, and grow to enterprise when your team is ready.</p>
+        <div className="billing-toggle" style={{ marginTop: 16, display: 'flex', gap: 12, justifyContent: 'center' }}>
           {CYCLES.map((cycle) => (
             <button
               key={cycle}
@@ -130,12 +112,8 @@ export default function Pricing() {
             <div className="pricing-card-header">
               <h3>{plan.name}</h3>
               <div className="price">
-                <span className="amount">
-                  {PRICING[plan.key][billingCycle] == null ? 'Custom' : `$${PRICING[plan.key][billingCycle]}`}
-                </span>
-                <span className="period">
-                  {PRICING[plan.key][billingCycle] == null ? '' : `/${billingCycle}`}
-                </span>
+                <span className="amount">${PRICING[plan.key][billingCycle]}</span>
+                <span className="period">/{billingCycle}</span>
               </div>
               <p className="description">{plan.desc}</p>
             </div>
@@ -149,17 +127,15 @@ export default function Pricing() {
             <button
               className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => handlePlanAction(plan.key)}
-              disabled={loading === plan.key || (currentPlan === plan.key && token)}
+              disabled={loading === plan.key || (currentPlan === plan.key && !!token)}
             >
               {loading === plan.key
                 ? 'Redirecting...'
                 : !token
                   ? (plan.key === 'free' ? 'Start Free' : 'Sign in to Continue')
-                  : plan.quote
-                    ? 'Request Quote'
-                    : currentPlan === plan.key
-                      ? 'Current Plan'
-                      : 'Continue'}
+                  : currentPlan === plan.key
+                    ? 'Current Plan'
+                    : plan.key === 'free' ? 'Free Forever' : 'Continue'}
             </button>
           </div>
         ))}
@@ -175,14 +151,16 @@ export default function Pricing() {
                 <th>Free</th>
                 <th>Standard</th>
                 <th>Premium</th>
+                <th>Enterprise</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td>Certifications Access</td><td>Limited</td><td>Partial</td><td>Full</td></tr>
-              <tr><td>Labs Access</td><td>Starter</td><td>Extended</td><td>Unlimited</td></tr>
-              <tr><td>AI Tools</td><td>Basic</td><td>Advanced</td><td>Premium</td></tr>
-              <tr><td>Job Opportunities</td><td>No</td><td>Limited</td><td>Full</td></tr>
-              <tr><td>Team Features</td><td>No</td><td>Basic</td><td>Advanced</td></tr>
+              <tr><td>Scans/month</td><td>5</td><td>100</td><td>500</td><td>Unlimited</td></tr>
+              <tr><td>AI Tools</td><td>Basic</td><td>Advanced</td><td>Premium</td><td>Premium</td></tr>
+              <tr><td>Report Export</td><td>No</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+              <tr><td>Team Features</td><td>No</td><td>Basic</td><td>Advanced</td><td>Full</td></tr>
+              <tr><td>SSO/SAML</td><td>No</td><td>No</td><td>No</td><td>Yes</td></tr>
+              <tr><td>Support</td><td>Community</td><td>Priority</td><td>Priority</td><td>24/7</td></tr>
             </tbody>
           </table>
         </div>
@@ -197,23 +175,12 @@ export default function Pricing() {
           </div>
           <div className="faq-item">
             <strong>What payment methods are supported?</strong>
-            <p>Stripe card payments are supported, with invoice and quote workflows for enterprise/university plans.</p>
+            <p>Stripe card payments are supported for all plans.</p>
           </div>
           <div className="faq-item">
-            <strong>How does enterprise procurement work?</strong>
-            <p>Submit a quote request and our sales team handles custom contracts and onboarding.</p>
+            <strong>What does Enterprise include?</strong>
+            <p>Unlimited scans, team management, SSO, compliance exports, VPC options, and 24/7 dedicated support.</p>
           </div>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginTop: 18 }}>
-        <div className="card-body" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <button className="btn btn-secondary" onClick={() => navigate('/quote')}>
-            <Building2 size={15} /> Enterprise Quote
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/quote')}>
-            <GraduationCap size={15} /> University Quote
-          </button>
         </div>
       </div>
 
