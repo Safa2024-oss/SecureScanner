@@ -4,9 +4,11 @@ import tempfile
 import shutil
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 from fastapi import UploadFile, HTTPException
 from pydantic import BaseModel
-from database import scans_collection
+from bson import ObjectId
+from database import scans_collection, enterprise_projects_collection, users_collection
 from services.sast_service import run_scan, extract_zip
 from services.dast_service import run_dast_scan
 from services.ai_service import analyze_vulnerabilities
@@ -18,7 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-async def save_scan(user_id: str, type: str, target: str, results: dict):
+async def save_scan(user_id: str, type: str, target: str, results: dict, project_id: Optional[str] = None, project_name: Optional[str] = None):
     """Save scan results to database"""
     scan = {
         "user_id": user_id,
@@ -26,7 +28,9 @@ async def save_scan(user_id: str, type: str, target: str, results: dict):
         "target": target,
         "status": "completed",
         "results": results,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.utcnow(),
+        "project_id": project_id,
+        "project_name": project_name
     }
     result = await scans_collection.insert_one(scan)
     return str(result.inserted_id)
@@ -56,8 +60,8 @@ def _run_sast_sync(file_paths: list, temp_dir: str) -> dict:
     return {"vulnerabilities": all_vulnerabilities, "languages": list(all_languages)}
 
 
-async def sast_scan(files: list[UploadFile], user_id: str, user_role: str = "user"):
-    """SAST scan with usage limit checking"""
+async def sast_scan(files: list[UploadFile], user_id: str, user_role: str = "user", project_id: Optional[str] = None, project_name: Optional[str] = None):
+    """SAST scan with usage limit checking and project assignment"""
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
 
@@ -111,7 +115,7 @@ async def sast_scan(files: list[UploadFile], user_id: str, user_role: str = "use
             "vulnerabilities": all_vulnerabilities
         }
 
-        scan_id = await save_scan(user_id, "SAST", result["target"], result)
+        scan_id = await save_scan(user_id, "SAST", result["target"], result, project_id, project_name)
         result["scan_id"] = scan_id
 
         usage = await get_usage_snapshot(user_id)
@@ -126,11 +130,21 @@ async def sast_scan(files: list[UploadFile], user_id: str, user_role: str = "use
 
 class DASTRequest(BaseModel):
     url: str
+    project_id: Optional[str] = None
 
 
-async def dast_scan(request: DASTRequest, user_id: str, user_role: str = "user"):
-    """DAST scan with usage limit checking"""
+async def dast_scan(request: DASTRequest, user_id: str, user_role: str = "user", project_id: Optional[str] = None, project_name: Optional[str] = None):
+    """DAST scan with usage limit checking and project assignment"""
     url = request.url
+    # Use passed project_id or from request
+    final_project_id = project_id or request.project_id
+    final_project_name = project_name
+
+    # If project_id provided but no name, fetch it
+    if final_project_id and not final_project_name:
+        project = await enterprise_projects_collection.find_one({"_id": ObjectId(final_project_id)})
+        if project:
+            final_project_name = project.get("name")
 
     if not url.startswith("http://") and not url.startswith("https://"):
         raise HTTPException(
@@ -166,7 +180,7 @@ async def dast_scan(request: DASTRequest, user_id: str, user_role: str = "user")
         "vulnerabilities": vulnerabilities
     }
 
-    scan_id = await save_scan(user_id, "DAST", url, result)
+    scan_id = await save_scan(user_id, "DAST", url, result, final_project_id, final_project_name)
     result["scan_id"] = scan_id
 
     usage = await get_usage_snapshot(user_id)
@@ -178,11 +192,21 @@ async def dast_scan(request: DASTRequest, user_id: str, user_role: str = "user")
 
 class GitScanRequest(BaseModel):
     repo_url: str
+    project_id: Optional[str] = None
 
 
-async def git_scan(request: GitScanRequest, user_id: str, user_role: str = "user"):
-    """Git repository scan with usage limit checking"""
+async def git_scan(request: GitScanRequest, user_id: str, user_role: str = "user", project_id: Optional[str] = None, project_name: Optional[str] = None):
+    """Git repository scan with usage limit checking and project assignment"""
     url = request.repo_url
+    # Use passed project_id or from request
+    final_project_id = project_id or request.project_id
+    final_project_name = project_name
+
+    # If project_id provided but no name, fetch it
+    if final_project_id and not final_project_name:
+        project = await enterprise_projects_collection.find_one({"_id": ObjectId(final_project_id)})
+        if project:
+            final_project_name = project.get("name")
 
     if not url.startswith("https://github.com") and not url.startswith("https://gitlab.com"):
         raise HTTPException(
@@ -227,7 +251,7 @@ async def git_scan(request: GitScanRequest, user_id: str, user_role: str = "user
         "vulnerabilities": vulnerabilities
     }
 
-    scan_id = await save_scan(user_id, "SAST", url, result)
+    scan_id = await save_scan(user_id, "SAST", url, result, final_project_id, final_project_name)
     result["scan_id"] = scan_id
 
     usage = await get_usage_snapshot(user_id)

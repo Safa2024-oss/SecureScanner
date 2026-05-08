@@ -420,6 +420,34 @@ async def get_subscription_by_checkout_session(user_id: str, session_id: str):
     }
 
 async def get_usage_snapshot(user_id: str):
+    """Get usage snapshot - enterprise members have unlimited scans"""
+    from database import users_collection
+    
+    # Get full user to check enterprise membership
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    is_enterprise_member = user and user.get("organization_id") is not None
+    
+    # Enterprise members have unlimited scans
+    if is_enterprise_member:
+        month_key = _now().strftime("%Y-%m")
+        usage = await usage_collection.find_one({"user_id": user_id, "month": month_key})
+        scans_used = usage.get("scans_used", 0) if usage else 0
+        return {
+            "plan": "enterprise",
+            "month": month_key,
+            "scans_used": scans_used,
+            "scans_limit": 999999,
+            "scans_remaining": 999999,
+            "courses_used": 0,
+            "courses_limit": 999999,
+            "labs_used": 0,
+            "labs_limit": 999999,
+            "certifications_used": 0,
+            "certifications_limit": 999999,
+            "jobs_used": 0,
+            "jobs_limit": 999999,
+        }
+    
     subscription = await get_user_subscription(user_id)
     limits = _get_limits(subscription.get("plan", "free"))
     month_key = _now().strftime("%Y-%m")
@@ -445,6 +473,9 @@ async def get_usage_snapshot(user_id: str):
 
 async def consume_scan_quota(user_id: str, user_role: str = "user"):
     """Atomically consume one scan quota; returns tuple(bool, details)."""
+    from database import users_collection
+    
+    # Admin has unlimited scans
     if user_role == "admin":
         return True, {
             "plan": "admin",
@@ -452,12 +483,44 @@ async def consume_scan_quota(user_id: str, user_role: str = "user"):
             "used": 0,
             "remaining": 999999,
         }
-
+    
+    # Get full user to check enterprise membership
+    user = await users_collection.find_one({"_id": ObjectId(user_id)})
+    is_enterprise_member = user and user.get("organization_id") is not None
+    
+    # Enterprise members have unlimited scans
+    if is_enterprise_member:
+        # Still track usage for analytics (optional)
+        month_key = _now().strftime("%Y-%m")
+        await usage_collection.update_one(
+            {"user_id": user_id, "month": month_key},
+            {
+                "$setOnInsert": {
+                    "user_id": user_id,
+                    "month": month_key,
+                    "scans_used": 0,
+                    "created_at": _now(),
+                }
+            },
+            upsert=True,
+        )
+        await usage_collection.update_one(
+            {"user_id": user_id, "month": month_key},
+            {"$inc": {"scans_used": 1}, "$set": {"updated_at": _now()}},
+        )
+        return True, {
+            "plan": "enterprise",
+            "limit": 999999,
+            "used": 0,
+            "remaining": 999999,
+        }
+    
+    # Regular user - check individual plan limits
     sub = await get_user_subscription(user_id)
     plan = sub.get("plan", "free")
     limit = _get_limits(plan)["scans"]
     month_key = _now().strftime("%Y-%m")
-
+    
     await usage_collection.update_one(
         {"user_id": user_id, "month": month_key},
         {
@@ -474,23 +537,23 @@ async def consume_scan_quota(user_id: str, user_role: str = "user"):
         },
         upsert=True,
     )
-
+    
     result = await usage_collection.update_one(
         {"user_id": user_id, "month": month_key, "scans_used": {"$lt": limit}},
         {"$inc": {"scans_used": 1}, "$set": {"updated_at": _now()}},
     )
     if result.modified_count == 0:
-        usage = await usage_collection.find_one({"user_id": user_id, "month": month_key})
-        used = usage.get("scans_used", 0) if usage else 0
+        usage_doc = await usage_collection.find_one({"user_id": user_id, "month": month_key})
+        used = usage_doc.get("scans_used", 0) if usage_doc else 0
         return False, {
             "plan": plan,
             "limit": limit,
             "used": used,
             "remaining": max(0, limit - used),
         }
-
-    usage = await usage_collection.find_one({"user_id": user_id, "month": month_key})
-    used = usage.get("scans_used", 0) if usage else 1
+    
+    usage_doc = await usage_collection.find_one({"user_id": user_id, "month": month_key})
+    used = usage_doc.get("scans_used", 0) if usage_doc else 1
     return True, {
         "plan": plan,
         "limit": limit,
