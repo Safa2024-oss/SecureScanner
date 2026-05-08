@@ -100,6 +100,9 @@
 
 .admin-search {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
@@ -109,12 +112,24 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--text3);
+  pointer-events: none;
 }
 
 .admin-search .input {
   padding-left: 40px;
   background: rgba(255,255,255,0.8);
   border: 1.5px solid var(--border);
+  height: 40px;          /* explicit height */
+  line-height: 1;
+  flex: 1;
+}
+/* The select dropdown should also have the same height */
+.admin-search select.input {
+  width: auto;
+  min-width: 170px;
+  padding: 0 12px;
+  height: 40px;
+  line-height: 1;
 }
 
 /* ── CONFIRMATION MODAL ──────────────────────────────────── */
@@ -235,6 +250,16 @@
   font-weight: 600;
 }
 
+
+.btn-accent {
+  background: rgba(99,102,241,0.1);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.btn-accent:hover {
+  background: var(--accent);
+  color: white;
+}
 /* ── MOBILE RESPONSIVE ───────────────────────────────────── */
 @media (max-width: 768px) {
   .admin-tabs {

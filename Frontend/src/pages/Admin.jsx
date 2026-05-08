@@ -553,6 +553,7 @@ export default function Admin() {
                             <td>
                               {user.email !== 'admin@securescan.local' && (
                                 <div style={{ display: 'flex', gap: 6 }}>
+                                  {/* Ban/Unban button */}
                                   <button
                                     className="btn btn-secondary btn-sm"
                                     title={user.status === 'banned' ? 'Unban user' : 'Ban user'}
@@ -563,8 +564,14 @@ export default function Admin() {
                                   >
                                     {user.status === 'banned' ? <UserCheck size={13} /> : <Ban size={13} />}
                                   </button>
+                                  {/* Promote/Demote button - use different style */}
                                   <button
-                                    className="btn btn-secondary btn-sm"
+                                    className="btn btn-sm"
+                                    style={{ 
+                                      background: 'var(--accent-bg)', 
+                                      border: '1px solid var(--accent)',
+                                      color: 'var(--accent)'
+                                    }}
                                     title={user.role === 'admin' ? 'Demote to user' : 'Promote to admin'}
                                     onClick={() => setConfirmAction({
                                       type: user.role === 'admin' ? 'demote' : 'promote',
@@ -573,6 +580,7 @@ export default function Admin() {
                                   >
                                     {user.role === 'admin' ? <Ban size={13} /> : <UserPlus size={13} />}
                                   </button>
+                                  {/* Delete button - stays red */}
                                   <button
                                     className="btn btn-sm"
                                     style={{ color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid #fecaca' }}
