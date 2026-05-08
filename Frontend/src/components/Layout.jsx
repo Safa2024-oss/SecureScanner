@@ -16,26 +16,28 @@ import { useState, useEffect } from 'react'
 export default function Layout({ user, onLogout }) {
   const navigate = useNavigate()
   const [planLabel, setPlanLabel] = useState(
-  user?.role === 'admin' ? 'ADMIN' : (user?.subscription_plan || 'FREE').toUpperCase()
-)
+    user?.role === 'admin' ? 'ADMIN' : (user?.subscription_plan || 'FREE').toUpperCase()
+  )
 
-useEffect(() => {
-  if (user?.role === 'admin') return
-  const token = localStorage.getItem('token')
-  if (!token) return
-  fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/payments/subscription`, {
-    headers: { Authorization: `Bearer ${token}` }
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (data.plan) setPlanLabel(data.plan.toUpperCase())
+  useEffect(() => {
+    if (user?.role === 'admin') return
+    const token = localStorage.getItem('token')
+    if (!token) return
+    fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/payments/subscription`, {
+      headers: { Authorization: `Bearer ${token}` }
     })
-    .catch(() => {})
-}, [user])
-  // Nav is inside the component so it can access user
+      .then(r => r.json())
+      .then(data => {
+        if (data.plan) setPlanLabel(data.plan.toUpperCase())
+      })
+      .catch(() => {})
+  }, [user])
+
+  // Build navigation links based on user type
   const nav = [
     ...(user?.role === 'admin' ? [{ to: '/admin', icon: Settings, label: 'Admin' }] : []),
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    // Dashboard link: point to enterprise dashboard if user belongs to an enterprise, otherwise normal dashboard
+    { to: user?.organization_id ? '/enterprise/dashboard' : '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/sast', icon: Code2, label: 'Code Scanner' },
     { to: '/dast', icon: Globe, label: 'URL Scanner' },
     { to: '/report', icon: FileText, label: 'Reports' },

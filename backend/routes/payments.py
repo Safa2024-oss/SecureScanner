@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Request
 from pydantic import BaseModel
 from middleware.auth import get_current_user
 from services.payment_service import (
@@ -15,6 +15,7 @@ from database import quote_requests_collection
 from datetime import datetime
 from database import users_collection
 from bson import ObjectId
+from services.payment_service import handle_webhook
 
 async def _get_user_email(user_id: str):
     user = await users_collection.find_one({"_id": ObjectId(user_id)}, {"email": 1})
@@ -41,7 +42,7 @@ class QuoteRequestBody(BaseModel):
 async def create_checkout(request: CheckoutRequest, user=Depends(get_current_user)):
     plan_alias = {"pro": "standard", "team": "premium"}
     plan = plan_alias.get(request.plan, request.plan)
-    if plan not in ["standard", "premium", "enterprise", "university"]:
+    if plan not in ["standard", "premium", "enterprise"]:
         raise HTTPException(status_code=400, detail="Invalid plan")
 
     # Get user email from database
@@ -150,7 +151,7 @@ async def verify_checkout_session(session_id: str, user=Depends(get_current_user
 
 @router.post("/quote-request")
 async def create_quote_request(body: QuoteRequestBody, user=Depends(get_current_user)):
-    if body.plan_type not in {"enterprise", "university"}:
+    if body.plan_type not in {"enterprise"}:
         raise HTTPException(status_code=400, detail="Invalid plan type")
     payload = {
         "plan_type": body.plan_type,
@@ -167,10 +168,19 @@ async def create_quote_request(body: QuoteRequestBody, user=Depends(get_current_
     result = await quote_requests_collection.insert_one(payload)
     return {"id": str(result.inserted_id), "status": "submitted"}
 
+@router.post("/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    success, message = await handle_webhook(payload, sig_header)
+    if not success:
+        print(f"Webhook error: {message}")  # debug
+        raise HTTPException(status_code=400, detail=message)
+    return {"status": "ok"}
 
 @router.post("/quote-request/public")
 async def create_public_quote_request(body: QuoteRequestBody):
-    if body.plan_type not in {"enterprise", "university"}:
+    if body.plan_type not in {"enterprise"}:
         raise HTTPException(status_code=400, detail="Invalid plan type")
     payload = {
         "plan_type": body.plan_type,

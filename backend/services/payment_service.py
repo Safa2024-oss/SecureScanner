@@ -1,5 +1,6 @@
 import asyncio
 import stripe
+import json
 from datetime import datetime, timedelta, timezone
 from bson import ObjectId
 from config import (
@@ -30,9 +31,7 @@ PLAN_LIMITS = {
     "free": {"scans": 5, "courses": 1, "labs": 1, "certifications": 0, "jobs": 0},
     "standard": {"scans": 100, "courses": 20, "labs": 20, "certifications": 1, "jobs": 10},
     "premium": {"scans": 500, "courses": 999999, "labs": 999999, "certifications": 999999, "jobs": 999999},
-    "entreprise": {"scans": 500, "courses": 999999, "labs": 999999, "certifications": 999999, "jobs": 999999},
-
-    
+    "enterprise": {"scans": 999999, "courses": 999999, "labs": 999999, "certifications": 999999, "jobs": 999999},
 }
 
 PRICE_MAP = {
@@ -54,20 +53,16 @@ STRIPE_TO_INTERNAL_STATUS = {
     "canceled": "cancelled",
 }
 
-
 def _now():
     return datetime.now(timezone.utc)
-
 
 def _dt_from_ts(ts):
     if not ts:
         return None
     return datetime.fromtimestamp(int(ts), tz=timezone.utc)
 
-
 def _get_limits(plan: str):
     return PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-
 
 async def _log_billing_event(event_type: str, user_id: str | None, payload: dict):
     await billing_events_collection.insert_one(
@@ -79,10 +74,8 @@ async def _log_billing_event(event_type: str, user_id: str | None, payload: dict
         }
     )
 
-
 async def _stripe_call(fn, *args, **kwargs):
     return await asyncio.to_thread(fn, *args, **kwargs)
-
 
 async def create_checkout_session(
     user_id: str,
@@ -92,17 +85,15 @@ async def create_checkout_session(
     success_url: str,
     cancel_url: str,
     promo_code: str | None = None,
+    company_name: str | None = None,
 ):
     """Create Stripe checkout session for paid plans."""
-    if plan in {"enterprise", "university"}:
-        return {"requires_quote": True}
-
     price_id = PRICE_MAP.get((plan, billing_cycle))
     if not price_id:
         error_msg = f"Missing price ID for {plan}/{billing_cycle}"
-        print(error_msg)  # shows in terminal
+        print(error_msg)
         await _log_billing_event("checkout.missing_price", user_id, {"error": error_msg})
-        return None  # still returns None, but logged
+        return None
 
     subscription = await subscriptions_collection.find_one({"user_id": user_id})
     params = {
@@ -118,6 +109,7 @@ async def create_checkout_session(
             "plan": plan,
             "billing_cycle": billing_cycle,
             "promo_code": promo_code or "",
+            "company_name": company_name or "",
         },
         "allow_promotion_codes": True,
     }
@@ -137,7 +129,6 @@ async def create_checkout_session(
         await _log_billing_event("checkout.session.error", user_id, {"error": str(e)})
         return None
 
-
 async def create_portal_session(user_id: str):
     subscription = await get_user_subscription(user_id)
     if not subscription or not subscription.get("stripe_customer_id"):
@@ -153,7 +144,6 @@ async def create_portal_session(user_id: str):
     except Exception as e:
         await _log_billing_event("billing.portal.error", user_id, {"error": str(e)})
         return None
-
 
 async def cancel_subscription_at_period_end(user_id: str):
     subscription = await get_user_subscription(user_id)
@@ -183,7 +173,6 @@ async def cancel_subscription_at_period_end(user_id: str):
     except Exception as e:
         await _log_billing_event("subscription.cancel.error", user_id, {"error": str(e)})
         return False
-
 
 async def _apply_subscription_state(
     *,
@@ -227,15 +216,16 @@ async def _apply_subscription_state(
         upsert=True,
     )
 
-    # Keep role for RBAC only; store plan separately.
-    await users_collection.update_one(
+    # Update user's subscription_plan
+    print(f"🔄 _apply_subscription_state: Updating user {user_id} with subscription_plan={plan}")
+    update_fields = {"subscription_plan": plan, "updated_at": now}
+    result = await users_collection.update_one(
         {"_id": ObjectId(user_id)},
-        {"$set": {"subscription_plan": plan, "updated_at": now}},
+        {"$set": update_fields},
     )
-
+    print(f"✅ User update result: matched={result.matched_count}, modified={result.modified_count}")
 
 async def _sync_stripe_subscription(stripe_subscription, fallback_user_id: str = None, fallback_plan: str = None, fallback_billing_cycle: str = None):
-    import json
     if not isinstance(stripe_subscription, dict):
         stripe_subscription = json.loads(str(stripe_subscription))
 
@@ -246,7 +236,7 @@ async def _sync_stripe_subscription(stripe_subscription, fallback_user_id: str =
         )
         user_id = existing.get("user_id") if existing else None
     if not user_id:
-        print(f"[DEBUG] _sync_stripe_subscription: no user_id found, skipping")
+        print("[DEBUG] _sync_stripe_subscription: no user_id found, skipping")
         return
 
     plan = stripe_subscription.get("metadata", {}).get("plan") or fallback_plan
@@ -255,6 +245,7 @@ async def _sync_stripe_subscription(stripe_subscription, fallback_user_id: str =
         existing = await subscriptions_collection.find_one({"user_id": user_id})
         plan = existing.get("plan", "standard") if existing else "standard"
 
+    print(f"🔄 _sync_stripe_subscription: user {user_id}, plan {plan}, status {stripe_subscription.get('status')}")
     await _apply_subscription_state(
         user_id=user_id,
         stripe_subscription_id=stripe_subscription.get("id"),
@@ -290,7 +281,6 @@ async def _record_invoice(invoice):
         upsert=True,
     )
 
-
 async def handle_webhook(payload, sig_header):
     """Handle Stripe webhook events with idempotency safeguards."""
     if not sig_header:
@@ -300,9 +290,7 @@ async def handle_webhook(payload, sig_header):
     except Exception as e:
         return False, f"Webhook signature error: {e}"
 
-    import json
     event_dict = json.loads(str(event))
-
     event_id = event_dict.get("id")
     if not event_id:
         return False, "Missing event id"
@@ -323,17 +311,30 @@ async def handle_webhook(payload, sig_header):
         plan = data_obj.get("metadata", {}).get("plan")
         billing_cycle = data_obj.get("metadata", {}).get("billing_cycle", "monthly")
         stripe_sub_id = data_obj.get("subscription")
+        print(f"🔔 Webhook checkout.session.completed: user {user_id}, plan {plan}, stripe_sub {stripe_sub_id}")
         if stripe_sub_id:
             stripe_sub = await _stripe_call(stripe.Subscription.retrieve, stripe_sub_id)
             stripe_sub_dict = json.loads(str(stripe_sub))
             await _sync_stripe_subscription(stripe_sub_dict, fallback_user_id=user_id, fallback_plan=plan, fallback_billing_cycle=billing_cycle)
         await _log_billing_event(event_type, user_id, {"session_id": data_obj.get("id")})
+
+        # CREATE ENTERPRISE ORGANIZATION IF PLAN == ENTERPRISE
+        if plan == "enterprise" and user_id:
+            from services.enterprise_service import create_organization
+            try:
+                org_id, invite_code = await create_organization(user_id, None)
+                print(f"🏢 Created enterprise organization {org_id} for user {user_id}")
+            except Exception as e:
+                print(f"❌ Failed to create organization: {e}")
+
     elif event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
+        print(f"🔔 Webhook subscription event: {event_type}")
         await _sync_stripe_subscription(data_obj)
         user_id = data_obj.get("metadata", {}).get("user_id")
         await _log_billing_event(event_type, user_id, {"subscription_id": data_obj.get("id")})
 
     elif event_type in {"invoice.created", "invoice.paid", "invoice.payment_succeeded", "invoice.payment_failed"}:
+        print(f"🔔 Webhook invoice event: {event_type}")
         await _record_invoice(data_obj)
         sub_id = data_obj.get("subscription")
         if sub_id:
@@ -366,7 +367,6 @@ async def get_user_subscription(user_id: str):
         "limits": _get_limits("free"),
     }
 
-
 async def get_invoice_history(user_id: str, limit: int = 20):
     sub = await subscriptions_collection.find_one({"user_id": user_id})
     if not sub or not sub.get("stripe_customer_id"):
@@ -374,25 +374,43 @@ async def get_invoice_history(user_id: str, limit: int = 20):
     cursor = invoices_collection.find({"customer_id": sub["stripe_customer_id"]}).sort("created_at", -1).limit(limit)
     return await cursor.to_list(length=limit)
 
-
 async def get_subscription_by_checkout_session(user_id: str, session_id: str):
     try:
         session = await _stripe_call(stripe.checkout.Session.retrieve, session_id)
-        import json
         session_dict = json.loads(str(session))
     except Exception as e:
-        print(f"[DEBUG] Session retrieve error: {e}")
+        print(f"Session retrieve error: {e}")
         return None
 
     metadata = session_dict.get("metadata") or {}
-    print(f"[DEBUG] metadata={metadata}")
-    print(f"[DEBUG] metadata user_id={metadata.get('user_id')}")
-    print(f"[DEBUG] current user_id={user_id}")
-
     if metadata.get("user_id") != user_id:
-        print("[DEBUG] user_id MISMATCH — returning None")
+        print("User ID mismatch")
         return None
 
+    # Try to get subscription directly from Stripe
+    stripe_sub_id = session_dict.get("subscription")
+    if stripe_sub_id:
+        try:
+            stripe_sub = await _stripe_call(stripe.Subscription.retrieve, stripe_sub_id)
+            sub_dict = json.loads(str(stripe_sub))
+            plan = sub_dict.get("metadata", {}).get("plan")
+            if not plan:
+                # Fallback to local subscription
+                sub = await get_user_subscription(user_id)
+                plan = sub.get("plan", "free")
+            status = sub_dict.get("status", "active")
+            billing_cycle = sub_dict.get("metadata", {}).get("billing_cycle", "monthly")
+            current_period_end = sub_dict.get("current_period_end")
+            return {
+                "plan": plan,
+                "status": status,
+                "billing_cycle": billing_cycle,
+                "current_period_end": datetime.fromtimestamp(current_period_end, tz=timezone.utc).isoformat() if current_period_end else None,
+            }
+        except Exception as e:
+            print(f"Subscription retrieve error: {e}")
+
+    # Fallback to local subscription
     sub = await get_user_subscription(user_id)
     return {
         "plan": sub.get("plan", "free"),
@@ -400,6 +418,7 @@ async def get_subscription_by_checkout_session(user_id: str, session_id: str):
         "billing_cycle": sub.get("billing_cycle", "monthly"),
         "current_period_end": sub.get("current_period_end").isoformat() if sub.get("current_period_end") else None,
     }
+
 async def get_usage_snapshot(user_id: str):
     subscription = await get_user_subscription(user_id)
     limits = _get_limits(subscription.get("plan", "free"))
@@ -423,7 +442,6 @@ async def get_usage_snapshot(user_id: str):
         "jobs_used": usage.get("jobs_used", 0) if usage else 0,
         "jobs_limit": limits["jobs"],
     }
-
 
 async def consume_scan_quota(user_id: str, user_role: str = "user"):
     """Atomically consume one scan quota; returns tuple(bool, details)."""

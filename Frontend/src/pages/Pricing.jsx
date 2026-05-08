@@ -45,6 +45,7 @@ export default function Pricing() {
   const { addToast } = useToast()
   const [billingCycle, setBillingCycle] = useState('monthly')
   const [loading, setLoading] = useState(null)
+  const [companyName, setCompanyName] = useState('')   // <-- moved inside component
   const token = localStorage.getItem('token')
   const user = useMemo(() => {
     try {
@@ -63,15 +64,28 @@ export default function Pricing() {
     }
     if (plan === 'free') return
 
+    // Require company name for enterprise
+    if (plan === 'enterprise' && !companyName.trim()) {
+      addToast('Please enter your company name', 'error')
+      return
+    }
+
     setLoading(plan)
     try {
+      const body = {
+        plan,
+        billing_cycle: billingCycle
+      }
+      if (plan === 'enterprise') {
+        body.company_name = companyName.trim()
+      }
       const response = await fetch(`${API_URL}/api/payments/create-checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ plan, billing_cycle: billingCycle })
+        body: JSON.stringify(body)
       })
 
       const data = await response.json()
@@ -124,6 +138,18 @@ export default function Pricing() {
                 </div>
               ))}
             </div>
+            {plan.key === 'enterprise' && (
+              <div style={{ marginBottom: 16 }}>
+                <input
+                  type="text"
+                  placeholder="Company name (required)"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  className="input"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            )}
             <button
               className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => handlePlanAction(plan.key)}
@@ -141,6 +167,7 @@ export default function Pricing() {
         ))}
       </div>
 
+      {/* Feature comparison table and rest of your content stays the same */}
       <div className="card" style={{ marginTop: 22 }}>
         <div className="card-body" style={{ display: 'grid', gap: 10 }}>
           <h3 style={{ margin: 0 }}>Feature Comparison</h3>

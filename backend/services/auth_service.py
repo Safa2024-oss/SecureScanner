@@ -34,7 +34,11 @@ async def create_user(name: str, email: str, password: str):
         "verified": False,
         "verified_at": None,
         "created_at": now,
-        "updated_at": now
+        "updated_at": now,
+        "organization_id": None,           # <-- ADD THIS
+        "is_enterprise_owner": False,
+        "enterprise_setup_completed": False,
+       
     }
     print("📦 About to insert user:", user)
     result = await users_collection.insert_one(user)
@@ -42,13 +46,19 @@ async def create_user(name: str, email: str, password: str):
     user["_id"] = result.inserted_id
     return user
 
-
 def format_user(user: dict) -> dict:
+    # Handle both possible id field names
+    user_id = user.get("_id") or user.get("id")
+    if not user_id:
+        raise ValueError("User missing id")
     return {
-        "id": str(user["_id"]),
-        "name": user["name"],
-        "email": user["email"],
+        "id": str(user_id),
+        "name": user.get("name", ""),
+        "email": user.get("email", ""),
         "verified": user.get("verified", False),
         "role": user.get("role", "user"),
         "subscription_plan": user.get("subscription_plan", "free"),
+        "organization_id": user.get("organization_id"),
+        "is_enterprise_owner": user.get("is_enterprise_owner", False),
+        "enterprise_setup_completed": user.get("enterprise_setup_completed", False)
     }

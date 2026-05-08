@@ -92,7 +92,7 @@ async def update_user(user_id: str, body: UpdateUserRequest, admin=Depends(get_a
         update["role"] = body.role
     if body.status in ["active", "banned"]:
         update["status"] = body.status
-    if body.subscription_plan in ["free", "standard", "premium", "enterprise", "university"]:
+    if body.subscription_plan in ["free", "standard", "premium", "enterprise"]:
         update["subscription_plan"] = body.subscription_plan
     if not update:
         raise HTTPException(status_code=400, detail="Nothing to update")

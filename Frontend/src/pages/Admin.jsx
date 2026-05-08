@@ -490,7 +490,7 @@ export default function Admin() {
                   <option value="standard">Standard</option>
                   <option value="premium">Premium</option>
                   <option value="enterprise">Enterprise</option>
-                  <option value="university">University</option>
+                  
                 </select>
               </div>
 
@@ -539,7 +539,7 @@ export default function Admin() {
                                   <option value="standard">Standard</option>
                                   <option value="premium">Premium</option>
                                   <option value="enterprise">Enterprise</option>
-                                  <option value="university">University</option>
+                                  
                                 </select>
                               )}
                             </td>

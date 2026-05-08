@@ -16,8 +16,9 @@ import Billing from './pages/Billing'
 import PaymentCancelled from './pages/PaymentCancelled'
 import PaymentFailure from './pages/PaymentFailure'
 import PlanSwitch from './pages/PlanSwitch'
-import QuoteRequest from './pages/QuoteRequest'
-
+import JoinEnterprise from './pages/JoinEnterprise'
+import EnterpriseDashboard from './pages/EnterpriseDashboard'
+import SetupEnterprise from './pages/SetupEnterprise'   // <-- add this
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -32,39 +33,48 @@ export default function App() {
   const handleLogin = (userData) => {
     setUser(userData)
   }
+
   const handleLogout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     setUser(null)
   }
 
+  const getStartPage = () => {
+    if (!user) return '/login'
+    if (user.organization_id) return '/enterprise/dashboard'
+    if (user.role === 'admin') return '/admin'
+    return '/dashboard'
+  }
+
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} />} />
-        <Route path="/register" element={!user ? <Register onRegister={handleLogin} /> : <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} />} />
+        {/* Public routes */}
+        <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to={getStartPage()} replace />} />
+        <Route path="/register" element={!user ? <Register onRegister={handleLogin} /> : <Navigate to={getStartPage()} replace />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/payment/success" element={<PaymentSuccess />} />
         <Route path="/payment/cancelled" element={<PaymentCancelled />} />
         <Route path="/payment/failure" element={<PaymentFailure />} />
         <Route path="/pricing" element={<Pricing />} />
-        <Route path="/quote" element={<QuoteRequest />} />
+    
+        <Route path="/enterprise/join" element={<JoinEnterprise />} />
+        <Route path="/enterprise/setup" element={<SetupEnterprise />} />   {/* <-- add this */}
+
+        {/* Protected routes with layout */}
         <Route path="/" element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}>
-          <Route index element={<Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />} />
+          <Route index element={<Navigate to={getStartPage()} replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="enterprise/dashboard" element={<EnterpriseDashboard />} />
           <Route path="sast" element={<SASTScanner />} />
           <Route path="dast" element={<DASTScanner />} />
           <Route path="report" element={<ReportViewer />} />
           <Route path="billing" element={<Billing />} />
           <Route path="plans" element={<Pricing />} />
           <Route path="plan-switch" element={<PlanSwitch />} />
-          <Route path="quote" element={<QuoteRequest />} />
-          <Route
-            path="admin"
-            element={user?.role === 'admin' ? <Admin /> : <Navigate to="/dashboard" />}
-          />
-          
+          <Route path="admin" element={user?.role === 'admin' ? <Admin /> : <Navigate to="/dashboard" />} />
         </Route>
       </Routes>
     </BrowserRouter>

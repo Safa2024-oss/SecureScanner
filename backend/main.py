@@ -10,6 +10,7 @@ from routes.payments import router as payments_router
 from services.payment_service import handle_webhook
 from config import APP_URL
 from urllib.parse import urlparse
+from routes.enterprise import router as enterprise_router
 
 # Configure logging
 logging.basicConfig(
@@ -74,6 +75,8 @@ app.include_router(scan_router)
 app.include_router(history_router)
 app.include_router(admin_router)
 app.include_router(payments_router)
+app.include_router(enterprise_router)
+
 
 
 @app.get("/")

@@ -1,4 +1,5 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException
+from middleware.auth import get_current_user
 from controllers.auth_controller import (
     register, login, forgot_password, reset_password,
     verify_email, resend_verification,
@@ -7,6 +8,11 @@ from controllers.auth_controller import (
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+@router.get("/me")
+async def get_me(current_user=Depends(get_current_user)):
+    print("current_user keys:", current_user.keys())
+    from services.auth_service import format_user
+    return format_user(current_user)
 
 @router.post("/register")
 async def register_route(request: RegisterRequest):
