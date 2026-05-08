@@ -1,10 +1,27 @@
 import smtplib
 import os
+import asyncio
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from config import MAIL_EMAIL, MAIL_PASSWORD, APP_URL
 
-def send_email(to: str, subject: str, html_content: str):
+async def send_email(to: str, subject: str, html_content: str):
+    """Send email asynchronously with proper error handling"""
+    try:
+        # Run SMTP in a thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            _send_email_sync,
+            to, subject, html_content
+        )
+        return result
+    except Exception as e:
+        print(f"❌ Email error (async wrapper): {e}")
+        return False
+
+def _send_email_sync(to: str, subject: str, html_content: str):
+    """Synchronous email sending function"""
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
@@ -101,3 +118,38 @@ def send_reset_password_email(to: str, name: str, token: str):
     </div>
     """
     return send_email(to, "Reset your SecureScan password", html)
+
+
+async def send_enterprise_invite_email(to_email: str, inviter_name: str, org_name: str, accept_link: str):
+    """Send enterprise invitation email"""
+    subject = f"You're invited to join {org_name} on SecureScan"
+    html_content = f"""
+    <div style="font-family: 'DM Sans', sans-serif; max-width: 520px; margin: 0 auto; background: #f7f8fa; padding: 40px 20px;">
+        <div style="background: white; border-radius: 12px; padding: 40px; border: 1px solid #e3e5ea;">
+            <div style="margin-bottom: 28px;">
+                <span style="font-size: 20px; font-weight: 700; color: #0f1117;">🛡️ SecureScan</span>
+            </div>
+            <h2 style="font-size: 22px; font-weight: 600; color: #0f1117; margin-bottom: 8px;">Enterprise Invitation</h2>
+            <p style="color: #4a5060; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+                <strong>{inviter_name}</strong> has invited you to join <strong>{org_name}</strong> on SecureScan.
+            </p>
+            <p style="color: #4a5060; font-size: 14px; margin-bottom: 20px;">
+                As a member of this enterprise team, you'll be able to:
+            </p>
+            <ul style="color: #4a5060; font-size: 14px; margin-bottom: 24px;">
+                <li>Run security scans under the company's enterprise plan</li>
+                <li>Collaborate on projects with your team</li>
+                <li>Access enterprise‑only features</li>
+            </ul>
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{accept_link}" style="display: inline-block; background: #6366f1; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 500; font-size: 14px;">
+                    Accept Invitation
+                </a>
+            </div>
+            <p style="color: #8a909e; font-size: 12px; margin-top: 24px; border-top: 1px solid #e3e5ea; padding-top: 16px;">
+                This link expires in 7 days. If you don't have a SecureScan account, you'll be prompted to create one.
+            </p>
+        </div>
+    </div>
+    """
+    return await send_email(to_email, subject, html_content)
