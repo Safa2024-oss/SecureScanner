@@ -45,8 +45,13 @@ class OrgUpdate(BaseModel):
 async def enterprise_dashboard(current_user=Depends(get_current_user)):
     import traceback
     try:
-        print(f"Enterprise dashboard - user: {current_user.get('id')} / {current_user.get('_id')}")
-        user_id = str(current_user.get("_id") or current_user.get("id"))
+        # Fetch full user from database to ensure we have organization_id
+        full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+        if not full_user:
+            raise HTTPException(404, "User not found")
+        
+        print(f"Enterprise dashboard - user: {full_user.get('email')}, org_id: {full_user.get('organization_id')}")
+        user_id = str(full_user["_id"])
         data = await get_enterprise_dashboard_data(user_id)
         if not data:
             raise HTTPException(403, "Not an enterprise member")
@@ -67,25 +72,30 @@ async def join_enterprise(req: JoinRequest, current_user=Depends(get_current_use
 # ========== PROJECTS ==========
 @router.post("/projects")
 async def add_project(project: ProjectCreate, current_user=Depends(get_current_user)):
-    user = current_user
-    if not user.get("organization_id"):
+    # Fetch full user from database
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user or not full_user.get("organization_id"):
         raise HTTPException(403, "Not an enterprise member")
+    
     project_id = await create_project(
-        organization_id=user["organization_id"],
+        organization_id=full_user["organization_id"],
         name=project.name,
         description=project.description or "",
-        created_by=user["id"]
+        created_by=current_user["id"]
     )
     return {"id": project_id, "name": project.name}
 
 @router.get("/projects")
 async def list_projects(current_user=Depends(get_current_user)):
-    user = current_user
-    if not user.get("organization_id"):
+    # Fetch full user from database
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user or not full_user.get("organization_id"):
         raise HTTPException(403, "Not an enterprise member")
+    
     cursor = enterprise_projects_collection.find(
-        {"organization_id": user["organization_id"], "is_archived": False}
+        {"organization_id": full_user["organization_id"], "is_archived": False}
     ).sort("created_at", -1)
+    
     projects = []
     async for p in cursor:
         projects.append({
@@ -104,19 +114,21 @@ async def sync_organization(current_user=Depends(get_current_user)):
     """Manually sync organization from Stripe subscription (for fallback)."""
     from services.payment_service import get_user_subscription
     from services.enterprise_service import create_organization
+    from database import users_collection
     
-    user_id = current_user["id"]
+    # Fetch fresh user from database
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
     
-    if current_user.get("organization_id"):
-        return {"already_has_org": True, "organization_id": current_user["organization_id"]}
+    if full_user.get("organization_id"):
+        return {"already_has_org": True, "organization_id": full_user["organization_id"]}
     
-    sub = await get_user_subscription(user_id)
+    sub = await get_user_subscription(current_user["id"])
     plan = sub.get("plan")
     if plan != "enterprise":
         return {"error": "User does not have an enterprise subscription"}
     
     try:
-        org_id, invite_code = await create_organization(user_id, None)
+        org_id, invite_code = await create_organization(current_user["id"], None)
         return {"created": True, "organization_id": org_id, "invite_code": invite_code}
     except Exception as e:
         raise HTTPException(500, f"Failed to create organization: {str(e)}")
@@ -127,10 +139,10 @@ async def update_organization_name(
     update: OrgUpdate,
     current_user=Depends(get_current_user)
 ):
-    user = current_user
-    if not user.get("is_enterprise_owner"):
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user.get("is_enterprise_owner"):
         raise HTTPException(403, "Only owner can update company name")
-    org_id = user.get("organization_id")
+    org_id = full_user.get("organization_id")
     if not org_id:
         raise HTTPException(404, "Organization not found")
     result = await organizations_collection.update_one(
@@ -316,10 +328,11 @@ async def accept_invite(
 @router.get("/invites")
 async def list_pending_invites(current_user=Depends(get_current_user)):
     """List all pending invites for the organization (owner only)"""
-    if not current_user.get("is_enterprise_owner"):
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user.get("is_enterprise_owner"):
         raise HTTPException(403, "Only owner can view invites")
     
-    org_id = current_user.get("organization_id")
+    org_id = full_user.get("organization_id")
     if not org_id:
         raise HTTPException(404, "Organization not found")
     
@@ -341,11 +354,12 @@ async def list_pending_invites(current_user=Depends(get_current_user)):
 @router.delete("/invite/{token}")
 async def revoke_invite(token: str, current_user=Depends(get_current_user)):
     """Revoke a pending invite (owner only)"""
-    if not current_user.get("is_enterprise_owner"):
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user.get("is_enterprise_owner"):
         raise HTTPException(403, "Only owner can revoke invites")
     
     result = await organization_invites_collection.update_one(
-        {"token": token, "organization_id": current_user["organization_id"]},
+        {"token": token, "organization_id": full_user["organization_id"]},
         {"$set": {"revoked": True, "revoked_at": datetime.now(timezone.utc)}}
     )
     
@@ -353,3 +367,24 @@ async def revoke_invite(token: str, current_user=Depends(get_current_user)):
         raise HTTPException(404, "Invite not found or already used")
     
     return {"message": "Invite revoked"}
+
+@router.post("/invite-code")
+async def generate_invite_code(current_user=Depends(get_current_user)):
+    """Generate a new invite code for the organization (owner only)"""
+    from services.enterprise_service import generate_owner_invite_code
+    
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user.get("is_enterprise_owner"):
+        raise HTTPException(403, "Only owner can generate invite code")
+    
+    org_id = full_user.get("organization_id")
+    if not org_id:
+        raise HTTPException(404, "Organization not found")
+    
+    invite_code = await generate_owner_invite_code(org_id, current_user["id"])
+    await organizations_collection.update_one(
+        {"_id": ObjectId(org_id)},
+        {"$set": {"active_invite_code": invite_code}}
+    )
+    
+    return {"invite_code": invite_code}
