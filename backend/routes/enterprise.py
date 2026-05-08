@@ -493,3 +493,149 @@ async def get_my_projects(current_user=Depends(get_current_user)):
         })
     
     return projects
+
+# ========== SCAN HISTORY ==========
+@router.get("/scans")
+async def get_enterprise_scans(
+    current_user=Depends(get_current_user),
+    project_id: Optional[str] = None,
+    member_id: Optional[str] = None,
+    limit: int = 50
+):
+    """Get scans for the enterprise – can filter by project or member"""
+    from database import scans_collection
+    
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user or not full_user.get("organization_id"):
+        raise HTTPException(403, "Not an enterprise member")
+    
+    org_id = full_user["organization_id"]
+    is_owner = full_user.get("is_enterprise_owner", False)
+    
+    # Get all member IDs in the organization
+    members_cursor = users_collection.find(
+        {"organization_id": org_id},
+        {"_id": 1}
+    )
+    member_ids = [str(m["_id"]) async for m in members_cursor]
+    
+    # Build query
+    query = {"user_id": {"$in": member_ids}}
+    
+    if project_id:
+        query["project_id"] = project_id
+    
+    if member_id and (is_owner or member_id == current_user["id"]):
+        query["user_id"] = member_id
+    
+    cursor = scans_collection.find(query).sort("created_at", -1).limit(limit)
+    
+    scans = []
+    async for scan in cursor:
+        # Get user name
+        user = await users_collection.find_one({"_id": ObjectId(scan["user_id"])})
+        scans.append({
+            "id": str(scan["_id"]),
+            "user_id": scan["user_id"],
+            "user_name": user.get("name") if user else "Unknown",
+            "type": scan.get("type", "Unknown"),
+            "target": scan.get("target", ""),
+            "created_at": scan.get("created_at").isoformat() if scan.get("created_at") else None,
+            "critical": scan.get("results", {}).get("critical", 0),
+            "high": scan.get("results", {}).get("high", 0),
+            "medium": scan.get("results", {}).get("medium", 0),
+            "low": scan.get("results", {}).get("low", 0),
+            "total": scan.get("results", {}).get("total", 0),
+            "project_id": scan.get("project_id"),
+            "project_name": scan.get("project_name")
+        })
+    
+    return scans
+
+@router.get("/projects/{project_id}/scans")
+async def get_project_scans(
+    project_id: str,
+    current_user=Depends(get_current_user),
+    limit: int = 50
+):
+    """Get scans for a specific project"""
+    from database import scans_collection
+    
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user or not full_user.get("organization_id"):
+        raise HTTPException(403, "Not an enterprise member")
+    
+    org_id = full_user["organization_id"]
+    
+    # Verify project belongs to organization
+    project = await enterprise_projects_collection.find_one({
+        "_id": ObjectId(project_id),
+        "organization_id": org_id
+    })
+    if not project:
+        raise HTTPException(404, "Project not found")
+    
+    cursor = scans_collection.find({"project_id": project_id}).sort("created_at", -1).limit(limit)
+    
+    scans = []
+    async for scan in cursor:
+        user = await users_collection.find_one({"_id": ObjectId(scan["user_id"])})
+        scans.append({
+            "id": str(scan["_id"]),
+            "user_name": user.get("name") if user else "Unknown",
+            "type": scan.get("type", "Unknown"),
+            "target": scan.get("target", ""),
+            "created_at": scan.get("created_at").isoformat() if scan.get("created_at") else None,
+            "critical": scan.get("results", {}).get("critical", 0),
+            "high": scan.get("results", {}).get("high", 0),
+            "medium": scan.get("results", {}).get("medium", 0),
+            "low": scan.get("results", {}).get("low", 0),
+            "total": scan.get("results", {}).get("total", 0)
+        })
+    
+    return scans
+
+@router.get("/members/{member_id}/scans")
+async def get_member_scans(
+    member_id: str,
+    current_user=Depends(get_current_user),
+    limit: int = 50
+):
+    """Get scans for a specific member (owner only or self)"""
+    from database import scans_collection
+    
+    full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
+    if not full_user or not full_user.get("organization_id"):
+        raise HTTPException(403, "Not an enterprise member")
+    
+    org_id = full_user["organization_id"]
+    is_owner = full_user.get("is_enterprise_owner", False)
+    
+    # Check permission: owner can see anyone, members can only see themselves
+    if not is_owner and member_id != current_user["id"]:
+        raise HTTPException(403, "You can only view your own scans")
+    
+    # Verify member belongs to organization
+    member = await users_collection.find_one({"_id": ObjectId(member_id), "organization_id": org_id})
+    if not member:
+        raise HTTPException(404, "Member not found")
+    
+    cursor = scans_collection.find({"user_id": member_id}).sort("created_at", -1).limit(limit)
+    
+    scans = []
+    async for scan in cursor:
+        scans.append({
+            "id": str(scan["_id"]),
+            "type": scan.get("type", "Unknown"),
+            "target": scan.get("target", ""),
+            "created_at": scan.get("created_at").isoformat() if scan.get("created_at") else None,
+            "critical": scan.get("results", {}).get("critical", 0),
+            "high": scan.get("results", {}).get("high", 0),
+            "medium": scan.get("results", {}).get("medium", 0),
+            "low": scan.get("results", {}).get("low", 0),
+            "total": scan.get("results", {}).get("total", 0),
+            "project_id": scan.get("project_id"),
+            "project_name": scan.get("project_name")
+        })
+    
+    return scans
