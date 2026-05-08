@@ -16,7 +16,7 @@ password_reset_tokens = db["password_reset_tokens"]
 invoices_collection = db["invoices"]
 billing_events_collection = db["billing_events"]
 processed_webhook_events_collection = db["processed_webhook_events"]
-quote_requests_collection = db["quote_requests"]
+
 organizations_collection = db["organizations"]
 organization_invites_collection = db["organization_invites"]
 enterprise_projects_collection = db["enterprise_projects"]
@@ -32,7 +32,7 @@ async def connect_db():
         await invoices_collection.create_index([("invoice_id", ASCENDING)], unique=True)
         await processed_webhook_events_collection.create_index([("event_id", ASCENDING)], unique=True)
         await billing_events_collection.create_index([("created_at", DESCENDING)])
-        await quote_requests_collection.create_index([("created_at", DESCENDING)])
+        
         await organizations_collection.create_index([("owner_id", 1)])
         await organizations_collection.create_index([("active_invite_code", 1)])
         await organization_invites_collection.create_index([("code", 1)], unique=True)

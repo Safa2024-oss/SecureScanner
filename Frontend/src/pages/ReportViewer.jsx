@@ -50,27 +50,42 @@ export default function ReportViewer() {
   }, [])
 
   const downloadReport = async (report) => {
-    if (plan === 'free') {
-      addToast('PDF export is a paid feature. Upgrade from billing.', 'warning')
+    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const token = localStorage.getItem('token')
+    
+    if (!token) {
+      addToast('Not authenticated. Please log in again.', 'error')
       return
     }
+
+    if (plan === 'free' && user.role !== 'admin') {
+      addToast('PDF export is a paid feature for regular users. Upgrade from billing.', 'warning')
+      return
+    }
+    
     try {
+      // First fetch full report data
       const res = await fetch(`${API_URL}/api/history/${report.id}/full`, {
-        headers: authHeader()
+        headers: { 'Authorization': `Bearer ${token}` }
       })
+      
+      if (!res.ok) throw new Error('Failed to fetch report data')
       const full = await res.json()
 
+      // Then generate PDF
       const response = await fetch(`${API_URL}/api/scan/report`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...authHeader()
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(full.results)
       })
 
       if (!response.ok) {
-        addToast('Failed to generate report', 'error')
+        const error = await response.json()
+        console.error('PDF generation error:', error)
+        addToast(error.detail || 'Failed to generate report', 'error')
         return
       }
 
@@ -80,7 +95,8 @@ export default function ReportViewer() {
       link.download = `securescan-${report.target}-report.pdf`
       link.click()
       addToast('Report downloaded', 'success')
-    } catch {
+    } catch (err) {
+      console.error(err)
       addToast('Could not generate report', 'error')
     }
   }
@@ -245,7 +261,7 @@ function ReportDetail({ id }) {
                 <span className="detail-vuln-fix"><CheckCircle2 size={12} /> {v.fix}</span>
               </div>
               {expanded === i && (
-                <div className="vuln-detail" style={{ margin: '0 0 8px', borderRadius: 0 }}>
+                <div className="vuln-detail">
                   <div className="vuln-section">
                     <h4>Description</h4>
                     <p>{v.description}</p>
@@ -256,8 +272,7 @@ function ReportDetail({ id }) {
                     </div>
                   )}
                   <div className="vuln-section vuln-fix">
-                    <CheckCircle2 size={14} />
-                    <p>{v.fix}</p>
+                    <CheckCircle2 size={14} /> <p>{v.fix}</p>
                   </div>
                 </div>
               )}

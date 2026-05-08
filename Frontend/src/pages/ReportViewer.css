@@ -289,3 +289,121 @@
   font-weight: 600;
   min-width: 160px;
 }
+
+/* Prevent text overflow in vulnerability rows */
+.detail-vuln-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(0,0,0,0.04);
+  transition: background 0.15s ease;
+  flex-wrap: wrap;  /* allow wrapping on small screens */
+}
+
+.detail-vuln-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 180px;
+  flex-shrink: 0;
+}
+
+.detail-vuln-file {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text3);
+  flex: 1;
+  word-break: break-word;      /* break long paths */
+  white-space: normal;
+  min-width: 150px;
+}
+
+.detail-vuln-fix {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #059669;
+  font-weight: 600;
+  min-width: 160px;
+  flex-shrink: 0;
+}
+
+/* Expanded detail section */
+.vuln-detail {
+  margin: 0 0 16px;
+  background: var(--bg2);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  border-left: 3px solid var(--accent);
+}
+
+.vuln-section {
+  margin-bottom: 12px;
+}
+
+.vuln-section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.vuln-section p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text2);
+  word-break: break-word;
+}
+
+.vuln-code {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 12px 0;
+  font-size: 12px;
+  font-family: var(--mono);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.vuln-code code {
+  white-space: pre-wrap;
+  font-family: monospace;
+}
+
+/* AI badge styling (if not already defined) */
+.ai-badge {
+  background: var(--bg2);
+  border-radius: 99px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text3);
+}
+
+.ai-badge--high { background: #fef2f2; color: #dc2626; }
+.ai-badge--medium { background: #fffbeb; color: #d97706; }
+.ai-badge--low { background: #ecfdf5; color: #059669; }
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .detail-vuln-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .detail-vuln-type,
+  .detail-vuln-file,
+  .detail-vuln-fix {
+    width: 100%;
+    min-width: auto;
+  }
+  .vuln-detail {
+    padding: 12px;
+  }
+}

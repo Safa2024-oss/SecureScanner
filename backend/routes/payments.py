@@ -11,7 +11,6 @@ from services.payment_service import (
     get_subscription_by_checkout_session,
 )
 from config import APP_URL
-from database import quote_requests_collection
 from datetime import datetime
 from database import users_collection
 from bson import ObjectId
@@ -149,24 +148,6 @@ async def verify_checkout_session(session_id: str, user=Depends(get_current_user
     return sub
 
 
-@router.post("/quote-request")
-async def create_quote_request(body: QuoteRequestBody, user=Depends(get_current_user)):
-    if body.plan_type not in {"enterprise"}:
-        raise HTTPException(status_code=400, detail="Invalid plan type")
-    payload = {
-        "plan_type": body.plan_type,
-        "company_name": body.company_name.strip(),
-        "contact_name": body.contact_name.strip(),
-        "email": body.email.strip().lower(),
-        "seats": body.seats,
-        "message": body.message.strip(),
-        "status": "new",
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
-        "user_id": user.get("id"),
-    }
-    result = await quote_requests_collection.insert_one(payload)
-    return {"id": str(result.inserted_id), "status": "submitted"}
 
 @router.post("/webhook")
 async def stripe_webhook(request: Request):
@@ -178,21 +159,3 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=400, detail=message)
     return {"status": "ok"}
 
-@router.post("/quote-request/public")
-async def create_public_quote_request(body: QuoteRequestBody):
-    if body.plan_type not in {"enterprise"}:
-        raise HTTPException(status_code=400, detail="Invalid plan type")
-    payload = {
-        "plan_type": body.plan_type,
-        "company_name": body.company_name.strip(),
-        "contact_name": body.contact_name.strip(),
-        "email": body.email.strip().lower(),
-        "seats": body.seats,
-        "message": body.message.strip(),
-        "status": "new",
-        "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow(),
-        "user_id": None,
-    }
-    result = await quote_requests_collection.insert_one(payload)
-    return {"id": str(result.inserted_id), "status": "submitted"}
