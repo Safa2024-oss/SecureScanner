@@ -102,7 +102,6 @@ export default function Admin() {
     return matchesSearch && matchesPlan
   })
 
-  // ── CHART DATA ────────────────────────────────────────────
   const vulnTypeChartData = stats?.top_vulnerability_types?.map(v => ({
     name: v.type.length > 22 ? v.type.slice(0, 22) + '…' : v.type,
     count: v.count,
@@ -147,7 +146,7 @@ export default function Admin() {
   return (
     <div className="admin-page">
 
-      {/* Confirmation Modal */}
+      {}
       {confirmAction && (
         <div className="confirm-modal-overlay" onClick={() => setConfirmAction(null)}>
           <div className="confirm-modal" onClick={e => e.stopPropagation()}>
@@ -196,7 +195,7 @@ export default function Admin() {
         </button>
       </div>
 
-      {/* Tabs */}
+      {}
       <div className="admin-tabs">
         {[
           { key: 'overview', label: 'Overview', icon: BarChart3 },
@@ -213,7 +212,7 @@ export default function Admin() {
         ))}
       </div>
 
-      {/* Loading skeleton */}
+      {}
       {loading ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 24 }}>
           {[1, 2, 3].map(i => (
@@ -224,11 +223,11 @@ export default function Admin() {
         </div>
       ) : (
         <>
-          {/* ── OVERVIEW TAB ─────────────────────────────── */}
+          {}
           {tab === 'overview' && stats && (
             <div className="admin-overview">
 
-              {/* Stat cards */}
+              {}
               <div className="admin-stats">
                 {[
                   { label: 'Total Users',            value: stats.total_users,           color: 'blue'   },
@@ -242,10 +241,10 @@ export default function Admin() {
                 ))}
               </div>
 
-              {/* ── 3-column donut charts ── */}
+              {}
               <div className="charts-grid">
 
-                {/* Severity Distribution */}
+                {}
                 <div className="card chart-card">
                   <div className="card-header">
                     <span className="card-title">Severity Distribution</span>
@@ -253,7 +252,7 @@ export default function Admin() {
                   <div className="chart-body">
                     {severityChartData.length > 0 ? (
                       <>
-                        {/* Fixed width+height on PieChart — no ResponsiveContainer for donuts */}
+                        {}
                         <div style={{ display: 'flex', justifyContent: 'center' }}>
                           <PieChart width={220} height={220}>
                             <Pie
@@ -287,7 +286,7 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* Scan Types */}
+                {}
                 <div className="card chart-card">
                   <div className="card-header">
                     <span className="card-title">Scan Types</span>
@@ -328,7 +327,7 @@ export default function Admin() {
                   </div>
                 </div>
 
-                {/* Users by Role */}
+                {}
                 <div className="card chart-card">
                   <div className="card-header">
                     <span className="card-title">Users by Role</span>
@@ -374,14 +373,14 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* ── Full-width bar chart ── */}
+              {}
               <div className="card chart-card-full">
                 <div className="card-header">
                   <span className="card-title">Top Vulnerability Types</span>
                 </div>
                 <div className="chart-body">
                   {vulnTypeChartData.length > 0 ? (
-                    /* Explicit height wrapper — ResponsiveContainer needs a real pixel height from its parent */
+                    
                     <div style={{ width: '100%', height: 320 }}>
                       <ResponsiveContainer width="100%" height="100%">
                       <BarChart
@@ -428,7 +427,7 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* ── User status table ── */}
+              {}
               <div className="card">
                 <div className="card-header">
                   <span className="card-title">User Status Breakdown</span>
@@ -467,7 +466,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ── USERS TAB ─────────────────────────────────── */}
+          {}
           {tab === 'users' && (
             <div>
               <div className="admin-search">
@@ -553,7 +552,7 @@ export default function Admin() {
                             <td>
                               {user.email !== 'admin@securescan.local' && (
                                 <div style={{ display: 'flex', gap: 6 }}>
-                                  {/* Ban/Unban button */}
+                                  {}
                                   <button
                                     className="btn btn-secondary btn-sm"
                                     title={user.status === 'banned' ? 'Unban user' : 'Ban user'}
@@ -564,7 +563,7 @@ export default function Admin() {
                                   >
                                     {user.status === 'banned' ? <UserCheck size={13} /> : <Ban size={13} />}
                                   </button>
-                                  {/* Promote/Demote button - use different style */}
+                                  {}
                                   <button
                                     className="btn btn-sm"
                                     style={{ 
@@ -580,7 +579,7 @@ export default function Admin() {
                                   >
                                     {user.role === 'admin' ? <Ban size={13} /> : <UserPlus size={13} />}
                                   </button>
-                                  {/* Delete button - stays red */}
+                                  {}
                                   <button
                                     className="btn btn-sm"
                                     style={{ color: 'var(--danger)', background: 'var(--danger-bg)', border: '1px solid #fecaca' }}
@@ -604,7 +603,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ── SCANS TAB ─────────────────────────────────── */}
+          {}
           {tab === 'scans' && (
             <div className="card">
               <div className="card-body" style={{ padding: 0 }}>
