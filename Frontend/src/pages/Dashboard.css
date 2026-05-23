@@ -2,7 +2,6 @@
   max-width: 980px;
 }
 
-/* Stats */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -84,7 +83,6 @@
   font-weight: 500;
 }
 
-/* Quick actions */
 .quick-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -151,7 +149,7 @@
   transform: translateX(3px);
 }
 
-/* Table */
+
 .scan-table {
   width: 100%;
   border-collapse: collapse;
@@ -205,7 +203,7 @@
   transform: translateX(2px);
 }
 
-/* ── MOBILE RESPONSIVE ───────────────────────────────────── */
+
 @media (max-width: 768px) {
   .dashboard {
     max-width: 100%;

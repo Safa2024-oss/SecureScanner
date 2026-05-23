@@ -28,10 +28,41 @@ export default function DASTScanner() {
   const [expanded, setExpanded] = useState(null)
   const [filter, setFilter] = useState('all')
   const [plan, setPlan] = useState('free')
+  const [user, setUser] = useState(null)
+  const [projects, setProjects] = useState([])
+  const [selectedProject, setSelectedProject] = useState('')
+  const [loadingProjects, setLoadingProjects] = useState(false)
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    setPlan(user.subscription_plan || 'free')
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    setUser(storedUser)
+    setPlan(storedUser.subscription_plan || 'free')
+  }, [])
+
+  
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const token = localStorage.getItem('token')
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+      
+      if (storedUser.organization_id && token) {
+        setLoadingProjects(true)
+        try {
+          const res = await fetch(`${API_URL}/api/enterprise/my-projects`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setProjects(data)
+          }
+        } catch (err) {
+          console.error('Failed to fetch projects', err)
+        } finally {
+          setLoadingProjects(false)
+        }
+      }
+    }
+    fetchProjects()
   }, [])
 
   const startScan = async () => {
@@ -48,13 +79,19 @@ export default function DASTScanner() {
     }, 2000)
 
     try {
+      const token = localStorage.getItem('token')
+      const body = { url }
+      if (selectedProject) {
+        body.project_id = selectedProject
+      }
+
       const response = await fetch(`${API_URL}/api/scan/dast`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ url })
+        body: JSON.stringify(body)
       })
 
       clearInterval(interval)
@@ -80,14 +117,19 @@ export default function DASTScanner() {
   }
 
   const downloadReport = async () => {
-    if (plan === 'free') {
-      addToast('PDF export is available on Standard and above plans.', 'warning')
-      return
+    const userData = JSON.parse(localStorage.getItem('user') || '{}');
+    const isEnterpriseMember = !!userData.organization_id;
+    
+    if (!isEnterpriseMember && plan === 'free') {
+      addToast('PDF export is available on Standard and above plans, or for enterprise members.', 'warning');
+      return;
     }
+    
     if (!results || results.length === 0) {
-      addToast('No results to export', 'warning')
-      return
+      addToast('No results to export', 'warning');
+      return;
     }
+    
     try {
       const response = await fetch(`${API_URL}/api/scan/report`, {
         method: 'POST',
@@ -110,7 +152,7 @@ export default function DASTScanner() {
       const blob = await response.blob()
       const link = document.createElement('a')
       link.href = window.URL.createObjectURL(blob)
-      link.download = 'securescan-report.pdf'
+      link.download = 'securescan-dast-report.pdf'
       link.click()
       addToast('Report downloaded', 'success')
     } catch {
@@ -129,6 +171,9 @@ export default function DASTScanner() {
     low: results.filter(r => r.severity === 'low').length,
   } : null
 
+  const isEnterpriseMember = user?.organization_id;
+  const canExport = isEnterpriseMember || plan !== 'free';
+
   return (
     <div className="scanner-page">
       <div className="page-header">
@@ -138,6 +183,32 @@ export default function DASTScanner() {
 
       <div className="card scan-setup">
         <div className="card-body">
+          {/* Project dropdown for enterprise members */}
+          {user?.organization_id && (
+            <div style={{ marginBottom: '20px' }}>
+              <label className="input-label">Project (optional)</label>
+              <select
+                className="input"
+                value={selectedProject}
+                onChange={(e) => setSelectedProject(e.target.value)}
+                disabled={loadingProjects}
+                style={{ marginTop: 4 }}
+              >
+                <option value="">-- Select a project --</option>
+                {projects.map(project => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+              {projects.length === 0 && !loadingProjects && (
+                <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+                  No projects found. Create one in your <a href="/enterprise/dashboard">Enterprise Dashboard</a>.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="url-form">
             <div className="input-group">
               <label className="input-label">Target URL</label>
@@ -188,8 +259,12 @@ export default function DASTScanner() {
             </div>
             <div className="results-actions">
               <button className="btn btn-secondary btn-sm" onClick={() => { setResults(null); setStep(-1) }}>New Scan</button>
-              <button className="btn btn-primary btn-sm" onClick={downloadReport} disabled={plan === 'free'}>
-                {plan === 'free' ? 'Upgrade to Export' : 'Export Report'}
+              <button 
+                className="btn btn-primary btn-sm" 
+                onClick={downloadReport} 
+                disabled={!canExport}
+              >
+                {!canExport ? 'Upgrade to Export' : 'Export Report'}
               </button>
             </div>
           </div>

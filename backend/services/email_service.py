@@ -8,7 +8,7 @@ from config import MAIL_EMAIL, MAIL_PASSWORD, APP_URL
 async def send_email(to: str, subject: str, html_content: str):
     """Send email asynchronously with proper error handling"""
     try:
-        # Run SMTP in a thread pool to avoid blocking
+        
         loop = asyncio.get_event_loop()
         result = await loop.run_in_executor(
             None,
@@ -42,7 +42,7 @@ def _send_email_sync(to: str, subject: str, html_content: str):
         return False
 
 
-# ── EMAIL TEMPLATES ───────────────────────────────────────
+
 
 def send_verification_email(to: str, name: str, token: str):
     verify_url = f"{APP_URL}/verify-email?token={token}"
