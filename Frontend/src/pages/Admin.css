@@ -119,11 +119,11 @@
   padding-left: 40px;
   background: rgba(255,255,255,0.8);
   border: 1.5px solid var(--border);
-  height: 40px;          /* explicit height */
+  height: 40px;          
   line-height: 1;
   flex: 1;
 }
-/* The select dropdown should also have the same height */
+
 .admin-search select.input {
   width: auto;
   min-width: 170px;
@@ -132,7 +132,6 @@
   line-height: 1;
 }
 
-/* ── CONFIRMATION MODAL ──────────────────────────────────── */
 .confirm-modal-overlay {
   position: fixed;
   inset: 0;
@@ -157,7 +156,7 @@
   border: 1px solid rgba(255,255,255,0.8);
 }
 
-/* ── CHARTS ──────────────────────────────────────────────────── */
+
 .charts-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -175,7 +174,6 @@
   animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
   animation-fill-mode: both;
 
-  /* ✅ KEY FIX: explicit height so ResponsiveContainer can measure */
   display: flex;
   flex-direction: column;
   min-height: 320px;
@@ -190,7 +188,7 @@
   transform: translateY(-2px);
 }
 
-/* ✅ KEY FIX: chart-body takes remaining space with explicit height */
+
 .chart-body {
   padding: 12px 16px 16px;
   flex: 1;
@@ -209,7 +207,7 @@
   margin-bottom: 24px;
   animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 
-  /* ✅ KEY FIX: same treatment for the full-width chart */
+
   display: flex;
   flex-direction: column;
   min-height: 380px;
@@ -233,7 +231,7 @@
   font-size: 14px;
 }
 
-/* Recharts tooltip override */
+
 .recharts-default-tooltip {
   background: rgba(255,255,255,0.95) !important;
   border: 1px solid var(--border) !important;
@@ -243,7 +241,6 @@
   box-shadow: var(--shadow) !important;
 }
 
-/* ── BADGE SUCCESS ───────────────────────────────────────── */
 .badge-success {
   background: linear-gradient(135deg, #ecfdf5, #d1fae5);
   color: #059669;
@@ -260,7 +257,7 @@
   background: var(--accent);
   color: white;
 }
-/* ── MOBILE RESPONSIVE ───────────────────────────────────── */
+
 @media (max-width: 768px) {
   .admin-tabs {
     width: 100%;

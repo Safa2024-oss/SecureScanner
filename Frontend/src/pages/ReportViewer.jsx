@@ -27,17 +27,19 @@ export default function ReportViewer() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [plan, setPlan] = useState('free')
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}')
-        setPlan(user.subscription_plan || 'free')
+        const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+        setUser(storedUser)
+        setPlan(storedUser.subscription_plan || 'free')
+        
         const res = await fetch(`${API_URL}/api/history/?page=1&limit=50`, {
           headers: authHeader()
         })
         const data = await res.json()
-        // Handle both old array and new paginated format
         const scans = Array.isArray(data) ? data : (data.data || [])
         setReports(scans)
       } catch {
@@ -50,7 +52,7 @@ export default function ReportViewer() {
   }, [])
 
   const downloadReport = async (report) => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
+    const isEnterpriseMember = !!user?.organization_id;
     const token = localStorage.getItem('token')
     
     if (!token) {
@@ -58,8 +60,8 @@ export default function ReportViewer() {
       return
     }
 
-    if (plan === 'free' && user.role !== 'admin') {
-      addToast('PDF export is a paid feature for regular users. Upgrade from billing.', 'warning')
+    if (!isEnterpriseMember && plan === 'free' && user?.role !== 'admin') {
+      addToast('PDF export is a paid feature for regular users. Enterprise members have access.', 'warning')
       return
     }
     
