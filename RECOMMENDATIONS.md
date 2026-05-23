@@ -45,7 +45,7 @@ backend/
 │   └── admin.py
 └── middleware/
     ├── auth.py                # get_current_user, get_admin_user
-    └── rate_limiter.py        # Rate limiting middleware
+    
 ```
 
 ### Actions

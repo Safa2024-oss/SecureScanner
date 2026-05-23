@@ -5,7 +5,6 @@
   overflow: hidden;
 }
 
-/* ── LEFT PANEL ── */
 .auth-left {
   width: 440px;
   flex-shrink: 0;
@@ -19,7 +18,7 @@
   overflow: hidden;
 }
 
-/* Animated background pattern */
+
 .auth-left::before {
   content: '';
   position: absolute;
@@ -116,7 +115,7 @@
   box-shadow: 0 0 8px rgba(129,140,248,0.5);
 }
 
-/* ── RIGHT PANEL ── */
+
 .auth-right {
   flex: 1;
   display: flex;
@@ -234,7 +233,6 @@
 .auth-link-small { font-size: 12px; color: var(--accent); font-weight: 600; }
 .auth-link-small:hover { text-decoration: underline; }
 
-/* spinner */
 .spinner {
   display: inline-block;
   width: 16px;
@@ -259,7 +257,7 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── MOBILE RESPONSIVE ───────────────────────────────────── */
+
 @media (max-width: 768px) {
   .auth-left {
     display: none;
