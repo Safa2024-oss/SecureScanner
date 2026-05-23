@@ -7,7 +7,7 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from datetime import datetime
 import io
 
-# ── COLORS ────────────────────────────────────────────────
+
 DARK = colors.HexColor("#0f1117")
 ACCENT = colors.HexColor("#1a56db")
 CRITICAL = colors.HexColor("#b91c1c")
@@ -34,7 +34,7 @@ def generate_pdf_report(scan_data: dict) -> bytes:
     styles = getSampleStyleSheet()
     story = []
 
-    # ── TITLE ──────────────────────────────────────────────
+    
     title_style = ParagraphStyle(
         "Title", fontSize=24, fontName="Helvetica-Bold",
         textColor=DARK, spaceAfter=12, alignment=TA_LEFT
@@ -49,7 +49,7 @@ def generate_pdf_report(scan_data: dict) -> bytes:
     story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
     story.append(Spacer(1, 0.4*cm))
 
-    # ── SCAN INFO ──────────────────────────────────────────
+  
     scan_type = scan_data.get("type", "SAST")
     target = scan_data.get("target", "")
     date = datetime.now().strftime("%B %d, %Y at %H:%M")
@@ -78,7 +78,7 @@ def generate_pdf_report(scan_data: dict) -> bytes:
     story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
     story.append(Spacer(1, 0.4*cm))
 
-    # ── SUMMARY ────────────────────────────────────────────
+    
     section_style = ParagraphStyle(
         "Section", fontSize=13, fontName="Helvetica-Bold",
         textColor=DARK, spaceAfter=12, spaceBefore=8
@@ -120,7 +120,7 @@ def generate_pdf_report(scan_data: dict) -> bytes:
     story.append(summary_table)
     story.append(Spacer(1, 0.6*cm))
 
-    # ── VULNERABILITIES ────────────────────────────────────
+   
     story.append(Paragraph("Vulnerabilities", section_style))
 
     vuln_style = ParagraphStyle(
@@ -172,7 +172,7 @@ def generate_pdf_report(scan_data: dict) -> bytes:
             story.append(HRFlowable(width="100%", thickness=0.5, color=BORDER))
             story.append(Spacer(1, 0.2*cm))
 
-    # ── FOOTER ─────────────────────────────────────────────
+   
     story.append(Spacer(1, 0.6*cm))
     story.append(HRFlowable(width="100%", thickness=1, color=BORDER))
     footer_style = ParagraphStyle(

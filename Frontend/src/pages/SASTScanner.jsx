@@ -23,11 +23,42 @@ export default function SASTScanner() {
   const [expanded, setExpanded] = useState(null)
   const [filter, setFilter] = useState('all')
   const [plan, setPlan] = useState('free')
+  const [user, setUser] = useState(null)
+  const [projects, setProjects] = useState([])
+  const [selectedProject, setSelectedProject] = useState('')
+  const [loadingProjects, setLoadingProjects] = useState(false)
   const fileRef = useRef()
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}')
-    setPlan(user.subscription_plan || 'free')
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    setUser(storedUser)
+    setPlan(storedUser.subscription_plan || 'free')
+  }, [])
+
+  // Fetch projects if user is enterprise member
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const token = localStorage.getItem('token')
+      const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+      
+      if (storedUser.organization_id && token) {
+        setLoadingProjects(true)
+        try {
+          const res = await fetch(`${API_URL}/api/enterprise/my-projects`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (res.ok) {
+            const data = await res.json()
+            setProjects(data)
+          }
+        } catch (err) {
+          console.error('Failed to fetch projects', err)
+        } finally {
+          setLoadingProjects(false)
+        }
+      }
+    }
+    fetchProjects()
   }, [])
 
   const handleDrop = (e) => {
@@ -53,6 +84,10 @@ export default function SASTScanner() {
       if (tab === 'upload' && files.length > 0) {
         const formData = new FormData()
         files.forEach(file => formData.append('files', file))
+        
+        if (selectedProject) {
+          formData.append('project_id', selectedProject)
+        }
 
         const response = await fetch(`${API_URL}/api/scan/sast`, {
           method: 'POST',
@@ -77,13 +112,18 @@ export default function SASTScanner() {
         const controller = new AbortController()
         const timeout = setTimeout(() => controller.abort(), 120000)
 
+        const body = { repo_url: gitUrl }
+        if (selectedProject) {
+          body.project_id = selectedProject
+        }
+
         const response = await fetch(`${API_URL}/api/scan/git`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({ repo_url: gitUrl }),
+          body: JSON.stringify(body),
           signal: controller.signal
         })
 
@@ -115,14 +155,19 @@ export default function SASTScanner() {
   }
 
   const downloadReport = async () => {
-    if (plan === 'free') {
-      addToast('PDF export is available on Standard and above plans.', 'warning')
-      return
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isEnterpriseMember = !!user.organization_id;
+    
+    if (!isEnterpriseMember && plan === 'free') {
+      addToast('PDF export is available on Standard and above plans, or for enterprise members.', 'warning');
+      return;
     }
+    
     if (!results || results.length === 0) {
-      addToast('No results to export', 'warning')
-      return
+      addToast('No results to export', 'warning');
+      return;
     }
+    
     try {
       const response = await fetch(`${API_URL}/api/scan/report`, {
         method: 'POST',
@@ -140,20 +185,20 @@ export default function SASTScanner() {
           low: results.filter(v => v.severity === 'low').length,
           vulnerabilities: results
         })
-      })
+      });
 
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'securescan-report.pdf'
-      a.click()
-      window.URL.revokeObjectURL(url)
-      addToast('Report downloaded', 'success')
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'securescan-report.pdf';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      addToast('Report downloaded', 'success');
     } catch {
-      addToast('Could not generate report', 'error')
+      addToast('Could not generate report', 'error');
     }
-  }
+  };
 
   const filtered = results
     ? (filter === 'all' ? results : results.filter(r => r.severity === filter)).sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity])
@@ -165,6 +210,9 @@ export default function SASTScanner() {
     medium: results.filter(r => r.severity === 'medium').length,
     low: results.filter(r => r.severity === 'low').length,
   } : null
+
+  const isEnterpriseMember = user?.organization_id;
+  const canExport = isEnterpriseMember || plan !== 'free';
 
   return (
     <div className="scanner-page">
@@ -184,6 +232,32 @@ export default function SASTScanner() {
                 <GitBranch size={15} /> Git Repository
               </button>
             </div>
+
+            {/* Project dropdown for enterprise members */}
+            {user?.organization_id && (
+              <div style={{ marginBottom: '20px' }}>
+                <label className="input-label">Project (optional)</label>
+                <select
+                  className="input"
+                  value={selectedProject}
+                  onChange={(e) => setSelectedProject(e.target.value)}
+                  disabled={loadingProjects}
+                  style={{ marginTop: 4 }}
+                >
+                  <option value="">-- Select a project --</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name}
+                    </option>
+                  ))}
+                </select>
+                {projects.length === 0 && !loadingProjects && (
+                  <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 4 }}>
+                    No projects found. Create one in your <a href="/enterprise/dashboard">Enterprise Dashboard</a>.
+                  </p>
+                )}
+              </div>
+            )}
 
             {tab === 'upload' ? (
               <div
@@ -268,8 +342,12 @@ export default function SASTScanner() {
               <button className="btn btn-secondary btn-sm" onClick={() => { setResults(null); setFiles([]); setProgress(0) }}>
                 New Scan
               </button>
-              <button className="btn btn-primary btn-sm" onClick={downloadReport} disabled={plan === 'free'}>
-                {plan === 'free' ? 'Upgrade to Export' : 'Export Report'}
+              <button 
+                className="btn btn-primary btn-sm" 
+                onClick={downloadReport} 
+                disabled={!canExport}
+              >
+                {!canExport ? 'Upgrade to Export' : 'Export Report'}
               </button>
             </div>
           </div>

@@ -1,7 +1,4 @@
-"""
-Create an admin user in the database.
-Usage: python create_admin.py
-"""
+
 import asyncio
 import bcrypt
 from datetime import datetime
@@ -17,10 +14,10 @@ async def create_admin():
     db = client[DB_NAME]
     users = db.users
 
-    # Check if admin already exists
+    
     existing = await users.find_one({"email": ADMIN_EMAIL})
     if existing:
-        # Update to admin role if exists
+        
         await users.update_one(
             {"_id": existing["_id"]},
             {"$set": {"role": "admin", "verified": True, "status": "active"}}
@@ -28,7 +25,7 @@ async def create_admin():
         print(f"✅ Updated existing user '{ADMIN_EMAIL}' to admin role.")
         return
 
-    # Hash password
+    
     hashed = bcrypt.hashpw(ADMIN_PASSWORD.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     now = datetime.utcnow()
 

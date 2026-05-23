@@ -142,7 +142,7 @@ def predict_severity(text: str) -> str:
     return None
 
 
-# ── FALLBACK ──────────────────────────────────────────────
+
 def rule_based_confidence(text: str) -> int:
     text = text.lower()
     if any(k in text for k in ["sql", "select", "insert", "delete"]):
@@ -168,7 +168,7 @@ def confidence_bucket(confidence_pct: int) -> str:
     return "needs_manual_review"
 
 
-# ── MAIN PIPELINE ─────────────────────────────────────────
+
 def analyze_vulnerabilities(vulnerabilities: list) -> list:
     result = []
 
@@ -179,7 +179,7 @@ def analyze_vulnerabilities(vulnerabilities: list) -> list:
 
         vuln_copy = vuln.copy()
 
-        # 1 — Confidence score (is it really vulnerable?)
+        
         confidence = predict_confidence(text)
         vuln_copy["confidence"] = confidence
         bucket = confidence_bucket(confidence)
@@ -190,17 +190,17 @@ def analyze_vulnerabilities(vulnerabilities: list) -> list:
             else "Review"
         )
 
-        # 2 — Vulnerability type from MSR model
+        
         vuln_type = predict_vuln_type(text)
         if vuln_type:
             vuln_copy["ai_vuln_type"] = vuln_type
 
-        # 3 — Risk level
+        
         risk = predict_risk(text)
         if risk:
             vuln_copy["risk_level"] = risk
 
-        # 4 — AI predicted severity
+        
         ai_severity = predict_severity(text)
         if ai_severity:
             vuln_copy["ai_severity"] = ai_severity

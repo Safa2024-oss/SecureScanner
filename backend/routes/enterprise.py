@@ -16,12 +16,11 @@ from services.email_service import send_enterprise_invite_email
 
 router = APIRouter(prefix="/api/enterprise", tags=["Enterprise"])
 
-# ========== OPTIONS HANDLERS ==========
+
 @router.options("/dashboard")
 async def options_dashboard():
     return {}
 
-# ========== REQUEST MODELS ==========
 class JoinRequest(BaseModel):
     code: str
 
@@ -43,7 +42,6 @@ class OrgUpdate(BaseModel):
 class AssignMembersRequest(BaseModel):
     user_ids: List[str]
 
-# ========== DASHBOARD ==========
 @router.get("/dashboard")
 async def enterprise_dashboard(current_user=Depends(get_current_user)):
     import traceback
@@ -64,7 +62,6 @@ async def enterprise_dashboard(current_user=Depends(get_current_user)):
         traceback.print_exc()
         raise HTTPException(500, f"Internal error: {str(e)}")
 
-# ========== JOIN WITH CODE ==========
 @router.post("/join")
 async def join_enterprise(req: JoinRequest, current_user=Depends(get_current_user)):
     result = await redeem_invite_code(req.code, current_user["id"])
@@ -72,7 +69,6 @@ async def join_enterprise(req: JoinRequest, current_user=Depends(get_current_use
         raise HTTPException(400, result["error"])
     return {"message": "Joined successfully"}
 
-# ========== PROJECTS ==========
 @router.post("/projects")
 async def add_project(project: ProjectCreate, current_user=Depends(get_current_user)):
     # Fetch full user from database
@@ -108,12 +104,12 @@ async def list_projects(current_user=Depends(get_current_user)):
     user_id = current_user["id"]
     
     if is_owner:
-        # Owner sees all projects
+      
         cursor = enterprise_projects_collection.find(
             {"organization_id": org_id, "is_archived": False}
         ).sort("created_at", -1)
     else:
-        # Member sees only assigned projects
+ 
         cursor = enterprise_projects_collection.find(
             {
                 "organization_id": org_id,
@@ -141,7 +137,7 @@ async def assign_members_to_project(
     current_user=Depends(get_current_user)
 ):
     """Assign members to a project (owner only)"""
-    # Check if user is owner
+    
     full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
     if not full_user.get("is_enterprise_owner"):
         raise HTTPException(403, "Only enterprise owner can assign members to projects")
@@ -150,7 +146,6 @@ async def assign_members_to_project(
     if not org_id:
         raise HTTPException(404, "Organization not found")
     
-    # Get the project
     project = await enterprise_projects_collection.find_one({
         "_id": ObjectId(project_id),
         "organization_id": org_id
@@ -158,13 +153,12 @@ async def assign_members_to_project(
     if not project:
         raise HTTPException(404, "Project not found")
     
-    # Verify all user_ids belong to the organization
+    
     for user_id in request.user_ids:
         member = await users_collection.find_one({"_id": ObjectId(user_id), "organization_id": org_id})
         if not member:
             raise HTTPException(400, f"User {user_id} is not a member of this organization")
     
-    # Update project with assigned members
     await enterprise_projects_collection.update_one(
         {"_id": ObjectId(project_id)},
         {"$set": {"assigned_members": request.user_ids}}
@@ -172,14 +166,13 @@ async def assign_members_to_project(
     
     return {"message": f"Assigned {len(request.user_ids)} members to project"}
 
-# ========== SYNC ORGANIZATION ==========
 @router.post("/sync")
 async def sync_organization(current_user=Depends(get_current_user)):
     """Manually sync organization from Stripe subscription (for fallback)."""
     from services.payment_service import get_user_subscription
     from services.enterprise_service import create_organization
     
-    # Fetch fresh user from database
+    
     full_user = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
     
     if full_user.get("organization_id"):
@@ -196,7 +189,6 @@ async def sync_organization(current_user=Depends(get_current_user)):
     except Exception as e:
         raise HTTPException(500, f"Failed to create organization: {str(e)}")
 
-# ========== UPDATE ORGANIZATION NAME ==========
 @router.patch("/organization")
 async def update_organization_name(
     update: OrgUpdate,
@@ -216,7 +208,7 @@ async def update_organization_name(
         raise HTTPException(404, "Organization not found")
     return {"message": "Company name updated"}
 
-# ========== ENTERPRISE SETUP ==========
+
 @router.post("/setup")
 async def setup_enterprise(
     setup: EnterpriseSetupRequest,
@@ -250,7 +242,6 @@ async def setup_enterprise(
     
     return {"message": "Enterprise setup completed", "organization_id": org_id}
 
-# ========== MEMBERS ==========
 @router.get("/members")
 async def list_members(current_user=Depends(get_current_user)):
     """List all members of the organization"""
@@ -278,7 +269,7 @@ async def remove_member(
     current_user=Depends(get_current_user)
 ):
     """Enterprise owner removes a member from the organization"""
-    # Get owner's full info
+    
     owner = await users_collection.find_one({"_id": ObjectId(current_user["id"])})
     if not owner.get("is_enterprise_owner"):
         raise HTTPException(403, "Only owner can remove members")
@@ -287,28 +278,26 @@ async def remove_member(
     if not org_id:
         raise HTTPException(404, "Organization not found")
     
-    # Cannot remove self
+    
     if member_id == current_user["id"]:
         raise HTTPException(400, "Cannot remove yourself. Transfer ownership first.")
     
-    # Get member to remove
+    
     member = await users_collection.find_one({"_id": ObjectId(member_id), "organization_id": org_id})
     if not member:
         raise HTTPException(404, "Member not found in this organization")
     
-    # Remove member from organization
     await users_collection.update_one(
         {"_id": ObjectId(member_id)},
         {"$set": {"organization_id": None, "is_enterprise_owner": False}}
     )
     
-    # Also remove from all project assignments
     await enterprise_projects_collection.update_many(
         {"organization_id": org_id},
         {"$pull": {"assigned_members": member_id}}
     )
     
-    # Decrement seat count
+    
     await organizations_collection.update_one(
         {"_id": ObjectId(org_id)},
         {"$inc": {"seats_used": -1}}
@@ -316,7 +305,7 @@ async def remove_member(
     
     return {"message": f"Member {member.get('name')} removed from organization"}
 
-# ========== EMAIL INVITATIONS ==========
+
 @router.post("/invite")
 async def invite_by_email(
     invite: InviteByEmail,
@@ -325,7 +314,6 @@ async def invite_by_email(
     """Enterprise owner invites a new member by email"""
     user_id = current_user["id"]
     
-    # Fetch the full user from database to check is_enterprise_owner
     full_user = await users_collection.find_one({"_id": ObjectId(user_id)})
     if not full_user:
         raise HTTPException(404, "User not found")
@@ -336,17 +324,15 @@ async def invite_by_email(
     org_id = full_user.get("organization_id")
     if not org_id:
         raise HTTPException(404, "Organization not found")
-    
-    # Get organization name
+  
     org = await organizations_collection.find_one({"_id": ObjectId(org_id)})
     org_name = org.get("name", "Enterprise") if org else "Enterprise"
     
-    # Check if user already has an account and is in an organization
     existing_user = await users_collection.find_one({"email": invite.email})
     if existing_user and existing_user.get("organization_id"):
         raise HTTPException(400, "User already belongs to an organization")
     
-    # Check for existing pending invite
+    
     existing_invite = await organization_invites_collection.find_one({
         "email": invite.email,
         "organization_id": org_id,
@@ -356,11 +342,11 @@ async def invite_by_email(
     if existing_invite:
         raise HTTPException(400, "This email already has a pending invitation")
     
-    # Generate unique token
+ 
     token = secrets.token_urlsafe(32)
     expires_at = datetime.now(timezone.utc) + timedelta(days=7)
     
-    # Store invite
+   
     invite_doc = {
         "organization_id": org_id,
         "email": invite.email,
@@ -373,7 +359,7 @@ async def invite_by_email(
     }
     await organization_invites_collection.insert_one(invite_doc)
     
-    # Send email invitation
+    
     frontend_url = os.getenv("APP_URL", "http://localhost:5173")
     accept_link = f"{frontend_url}/enterprise/accept-invite?token={token}"
     
@@ -404,16 +390,14 @@ async def accept_invite(
     })
     if not invite:
         raise HTTPException(400, "Invalid or expired invitation")
-    
-    # Verify email matches
+   
     if current_user["email"] != invite["email"]:
         raise HTTPException(400, "This invitation was sent to a different email address")
     
-    # Check if user already has an organization
     if current_user.get("organization_id"):
         raise HTTPException(400, "You already belong to an organization")
     
-    # Add user to organization
+    
     await users_collection.update_one(
         {"_id": ObjectId(current_user["id"])},
         {"$set": {
@@ -422,13 +406,13 @@ async def accept_invite(
         }}
     )
     
-    # Mark invite as used
+    
     await organization_invites_collection.update_one(
         {"token": token},
         {"$set": {"used": True, "used_at": datetime.now(timezone.utc)}}
     )
     
-    # Increment seat count
+    
     await organizations_collection.update_one(
         {"_id": ObjectId(invite["organization_id"])},
         {"$inc": {"seats_used": 1}}
@@ -464,18 +448,18 @@ async def get_my_projects(current_user=Depends(get_current_user)):
     org_id = full_user.get("organization_id")
     
     if not org_id:
-        return []  # Not enterprise member
+        return []  
     
     is_owner = full_user.get("is_enterprise_owner", False)
     user_id = current_user["id"]
     
     if is_owner:
-        # Owner sees all projects
+        
         cursor = enterprise_projects_collection.find(
             {"organization_id": org_id, "is_archived": False}
         ).sort("created_at", -1)
     else:
-        # Member sees only projects they're assigned to
+        
         cursor = enterprise_projects_collection.find(
             {
                 "organization_id": org_id,
@@ -494,7 +478,7 @@ async def get_my_projects(current_user=Depends(get_current_user)):
     
     return projects
 
-# ========== SCAN HISTORY ==========
+
 @router.get("/scans")
 async def get_enterprise_scans(
     current_user=Depends(get_current_user),
@@ -512,14 +496,14 @@ async def get_enterprise_scans(
     org_id = full_user["organization_id"]
     is_owner = full_user.get("is_enterprise_owner", False)
     
-    # Get all member IDs in the organization
+    
     members_cursor = users_collection.find(
         {"organization_id": org_id},
         {"_id": 1}
     )
     member_ids = [str(m["_id"]) async for m in members_cursor]
     
-    # Build query
+  
     query = {"user_id": {"$in": member_ids}}
     
     if project_id:
@@ -532,7 +516,7 @@ async def get_enterprise_scans(
     
     scans = []
     async for scan in cursor:
-        # Get user name
+       
         user = await users_collection.find_one({"_id": ObjectId(scan["user_id"])})
         scans.append({
             "id": str(scan["_id"]),
@@ -567,7 +551,7 @@ async def get_project_scans(
     
     org_id = full_user["organization_id"]
     
-    # Verify project belongs to organization
+  
     project = await enterprise_projects_collection.find_one({
         "_id": ObjectId(project_id),
         "organization_id": org_id
@@ -611,11 +595,11 @@ async def get_member_scans(
     org_id = full_user["organization_id"]
     is_owner = full_user.get("is_enterprise_owner", False)
     
-    # Check permission: owner can see anyone, members can only see themselves
+   
     if not is_owner and member_id != current_user["id"]:
         raise HTTPException(403, "You can only view your own scans")
     
-    # Verify member belongs to organization
+   
     member = await users_collection.find_one({"_id": ObjectId(member_id), "organization_id": org_id})
     if not member:
         raise HTTPException(404, "Member not found")

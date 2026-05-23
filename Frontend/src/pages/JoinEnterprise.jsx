@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/Toast';
 import '../components/Layout.css';
 
@@ -8,7 +7,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 export default function JoinEnterprise() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const { addToast } = useToast();
 
   const handleSubmit = async (e) => {
@@ -31,7 +29,7 @@ export default function JoinEnterprise() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Invalid code');
       
-      // Refresh user data from server to get updated organization_id
+      // Refresh user data
       const meRes = await fetch(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -41,8 +39,10 @@ export default function JoinEnterprise() {
       }
       
       addToast('Successfully joined the enterprise!', 'success');
-      // Force reload to refresh sidebar/layout if needed
+      
+      // Force full page reload to update sidebar
       window.location.href = '/enterprise/dashboard';
+      
     } catch (err) {
       addToast(err.message, 'error');
     } finally {
@@ -57,6 +57,9 @@ export default function JoinEnterprise() {
           <span className="card-title">Join an Enterprise</span>
         </div>
         <div className="card-body">
+          <p style={{ marginBottom: '1rem', color: 'var(--text3)' }}>
+            Enter the invite code provided by your company's enterprise owner.
+          </p>
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: '16px' }}>
               <label>Invite Code</label>
@@ -65,12 +68,12 @@ export default function JoinEnterprise() {
                 className="input"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="Paste the invite code here"
+                placeholder="Paste invite code here"
                 required
               />
             </div>
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Joining...' : 'Join'}
+              {loading ? 'Joining...' : 'Join Enterprise'}
             </button>
           </form>
         </div>
