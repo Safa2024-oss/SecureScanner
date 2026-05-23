@@ -6,7 +6,7 @@ client = AsyncIOMotorClient(MONGODB_URL)
 db = client[DB_NAME]
 
 
-# Collections
+
 users_collection = db["users"]
 scans_collection = db["scans"]
 subscriptions_collection = db["subscriptions"]
@@ -24,9 +24,9 @@ enterprise_projects_collection = db["enterprise_projects"]
 
 async def connect_db():
     try:
-        # Ping the database
+       
         await client.admin.command("ping")
-        # Ensure core indexes for billing consistency and webhook idempotency
+       
         await subscriptions_collection.create_index([("user_id", ASCENDING)], unique=True)
         await usage_collection.create_index([("user_id", ASCENDING), ("month", ASCENDING)], unique=True)
         await invoices_collection.create_index([("invoice_id", ASCENDING)], unique=True)

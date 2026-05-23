@@ -22,11 +22,11 @@ class UpdateQuoteRequest(BaseModel):
 @router.get("/stats")
 async def get_stats(admin=Depends(get_admin_user)):
     """Platform overview using MongoDB aggregation."""
-    # Users count
+   
     users_count = await db.users.count_documents({})
     scans_count = await db.scans.count_documents({})
 
-    # Vuln stats via aggregation
+    
     pipeline = [
         {"$group": {
             "_id": None,
@@ -38,7 +38,7 @@ async def get_stats(admin=Depends(get_admin_user)):
     vuln_stats = await db.scans.aggregate(pipeline).to_list(1)
     total_vulns = vuln_stats[0].get("total_vulnerabilities", 0) if vuln_stats else 0
 
-    # Top vulnerability types
+   
     vuln_types = {}
     async for scan in db.scans.find({}, {"results.vulnerabilities.type": 1}):
         for v in scan.get("results", {}).get("vulnerabilities", []):

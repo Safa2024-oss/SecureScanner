@@ -44,16 +44,14 @@ async def create_checkout(request: CheckoutRequest, user=Depends(get_current_use
     if plan not in ["standard", "premium", "enterprise"]:
         raise HTTPException(status_code=400, detail="Invalid plan")
 
-    # Get user email from database
     user_email = await _get_user_email(user["id"])
     if not user_email:
         raise HTTPException(status_code=400, detail="User email not found")
 
-    # Check if user already has a paid subscription
     current_sub = await get_user_subscription(user["id"])
     current_plan = current_sub.get("plan", "free")
 
-    # If user has a paid plan and is trying to change to a different plan -> portal
+  
     if current_plan != "free" and current_plan != plan:
         portal_result = await create_portal_session(user["id"])
         if portal_result and portal_result.get("url"):
@@ -61,7 +59,7 @@ async def create_checkout(request: CheckoutRequest, user=Depends(get_current_use
         else:
             raise HTTPException(status_code=400, detail="Could not open billing portal to change plan")
 
-    # Otherwise create a new checkout session (free user or same plan – though same plan should be disabled in UI)
+    
     success_url = f"{APP_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}"
     cancel_url = f"{APP_URL}/payment/cancelled"
 
