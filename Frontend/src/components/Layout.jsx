@@ -8,7 +8,8 @@ import {
   ShieldCheck, 
   ChevronRight,
   Settings,
-  CreditCard
+  CreditCard,
+  Users
 } from 'lucide-react'
 import './Layout.css'
 import { useState, useEffect } from 'react'
@@ -18,6 +19,21 @@ export default function Layout({ user, onLogout }) {
   const [planLabel, setPlanLabel] = useState(
     user?.role === 'admin' ? 'ADMIN' : (user?.subscription_plan || 'FREE').toUpperCase()
   )
+
+  
+  useEffect(() => {
+    const checkUserUpdate = () => {
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser)
+        // If user has organization_id but current component doesn't know it, reload the page
+        if (parsedUser.organization_id && !user?.organization_id) {
+          window.location.reload()
+        }
+      }
+    }
+    checkUserUpdate()
+  }, [])
 
   useEffect(() => {
     if (user?.role === 'admin') return
@@ -33,7 +49,7 @@ export default function Layout({ user, onLogout }) {
       .catch(() => {})
   }, [user])
 
-  // Build navigation links based on user type
+  
   const nav = [
     ...(user?.role === 'admin' ? [{ to: '/admin', icon: Settings, label: 'Admin' }] : []),
     // Dashboard link: point to enterprise dashboard if user belongs to an enterprise, otherwise normal dashboard
@@ -43,6 +59,11 @@ export default function Layout({ user, onLogout }) {
     { to: '/report', icon: FileText, label: 'Reports' },
     ...(user?.role !== 'admin' ? [{ to: '/billing', icon: CreditCard, label: 'Billing' }] : [])
   ]
+
+
+  if (user && !user.organization_id && user.role !== 'admin') {
+    nav.push({ to: '/enterprise/join', icon: Users, label: 'Join Enterprise' })
+  }
 
   const handleLogout = () => {
     onLogout()

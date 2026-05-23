@@ -18,16 +18,21 @@ import PaymentFailure from './pages/PaymentFailure'
 import PlanSwitch from './pages/PlanSwitch'
 import JoinEnterprise from './pages/JoinEnterprise'
 import EnterpriseDashboard from './pages/EnterpriseDashboard'
-import SetupEnterprise from './pages/SetupEnterprise'   // <-- add this
+import SetupEnterprise from './pages/SetupEnterprise'   
+import AcceptInvite from './pages/AcceptInvite'
 
 export default function App() {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('user')
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
+    const handleStorageChange = () => {
+      const savedUser = localStorage.getItem('user')
+      if (savedUser) {
+        setUser(JSON.parse(savedUser))
+      }
     }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [])
 
   const handleLogin = (userData) => {
@@ -62,7 +67,7 @@ export default function App() {
     
         <Route path="/enterprise/join" element={<JoinEnterprise />} />
         <Route path="/enterprise/setup" element={<SetupEnterprise />} />   {/* <-- add this */}
-
+        <Route path="/enterprise/accept-invite" element={<AcceptInvite />} />
         {/* Protected routes with layout */}
         <Route path="/" element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}>
           <Route index element={<Navigate to={getStartPage()} replace />} />

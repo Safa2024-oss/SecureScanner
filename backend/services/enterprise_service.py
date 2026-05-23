@@ -27,13 +27,13 @@ async def create_organization(owner_id: str, company_name: str = None):
     result = await organizations_collection.insert_one(org)
     org_id = str(result.inserted_id)
 
-    # Update user
+   
     await users_collection.update_one(
         {"_id": ObjectId(owner_id)},
         {"$set": {"organization_id": org_id, "is_enterprise_owner": True}}
     )
 
-    # Generate invite code for owner
+    
     code = secrets.token_urlsafe(16)
     expires_at = datetime.now(timezone.utc) + timedelta(days=30)
     invite = {
@@ -47,7 +47,7 @@ async def create_organization(owner_id: str, company_name: str = None):
     }
     await organization_invites_collection.insert_one(invite)
 
-    # Store active code in organization document
+    
     await organizations_collection.update_one(
         {"_id": ObjectId(org_id)},
         {"$set": {"active_invite_code": code}}
@@ -64,7 +64,7 @@ async def get_enterprise_dashboard_data(user_id: str):
     if not org:
         return None
 
-    # Members
+   
     members_cursor = users_collection.find(
         {"organization_id": user["organization_id"]},
         {"_id": 1, "name": 1, "email": 1, "is_enterprise_owner": 1}
@@ -82,7 +82,7 @@ async def get_enterprise_dashboard_data(user_id: str):
         {"organization_id": user["organization_id"], "is_archived": False}
     )
 
-    # Scans count – assuming scans_collection has user_id field
+   
     from database import scans_collection
     member_ids = [str(m["id"]) for m in members]  # use the 'id' field we stored
     scans_count = await scans_collection.count_documents({"user_id": {"$in": member_ids}})
@@ -112,19 +112,16 @@ async def redeem_invite_code(code: str, user_id: str):
     if user.get("organization_id"):
         return {"success": False, "error": "You are already in an organization"}
 
-    # Add user to organization
     await users_collection.update_one(
         {"_id": ObjectId(user_id)},
         {"$set": {"organization_id": invite["organization_id"], "is_enterprise_owner": False}}
     )
 
-    # Mark invite as used
     await organization_invites_collection.update_one(
         {"_id": invite["_id"]},
         {"$set": {"used_by": user_id, "used_at": datetime.now(timezone.utc)}}
     )
 
-    # Increment seat count
     await organizations_collection.update_one(
         {"_id": invite["organization_id"]},
         {"$inc": {"seats_used": 1}}
@@ -132,7 +129,7 @@ async def redeem_invite_code(code: str, user_id: str):
 
     return {"success": True}
 
-# Optional: create a project
+
 async def create_project(organization_id: str, name: str, description: str, created_by: str):
     project = {
         "organization_id": organization_id,

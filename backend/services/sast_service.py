@@ -3,8 +3,8 @@ import json
 import os
 import zipfile
 import tempfile
+from pathlib import Path
 
-# ── BANDIT (Python only) ───────────────────────────────────
 def run_bandit_scan(file_path: str) -> list:
     result = subprocess.run(
         ["bandit", "-r", file_path, "-f", "json", "-q"],
@@ -32,7 +32,6 @@ def run_bandit_scan(file_path: str) -> list:
     return vulnerabilities
 
 
-# ── SEMGREP (multi-language) ───────────────────────────────
 def run_semgrep_scan(file_path: str) -> list:
     import shutil
     if not shutil.which("semgrep"):
@@ -80,14 +79,13 @@ def run_semgrep_scan(file_path: str) -> list:
     return vulnerabilities
 
 
-# ── SMART SCAN (picks the right tool) ─────────────────────
+
 PYTHON_EXTENSIONS = {".py"}
 SEMGREP_EXTENSIONS = {".js", ".jsx", ".ts", ".tsx", ".java", ".php", ".go", ".rb", ".c", ".cpp"}
 
 def run_scan(file_path: str) -> dict:
     """Detect language and run the right scanner"""
-    
-    # If it's a folder, check what languages are inside
+   
     if os.path.isdir(file_path):
         extensions = set()
         for root, dirs, files in os.walk(file_path):
@@ -111,7 +109,7 @@ def run_scan(file_path: str) -> dict:
 
         return {"vulnerabilities": vulns, "languages": list(set(languages))}
 
-    # Single file
+   
     ext = os.path.splitext(file_path)[1].lower()
     if ext in PYTHON_EXTENSIONS:
         return {
@@ -125,7 +123,7 @@ def run_scan(file_path: str) -> dict:
         }
 
 
-# ── HELPERS ────────────────────────────────────────────────
+
 def extract_zip(zip_path: str, extract_to: str):
     import zipfile
     extract_path = Path(extract_to).resolve()

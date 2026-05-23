@@ -5,7 +5,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Disable SSL warnings
 requests.packages.urllib3.disable_warnings(
     requests.packages.urllib3.exceptions.InsecureRequestWarning
 )
@@ -14,7 +13,7 @@ HEADERS = {
     "User-Agent": "SecureScan Security Scanner"
 }
 
-# ── 1. CRAWL ──────────────────────────────────────────────
+
 def crawl(base_url: str, max_pages: int = 10) -> list:
     """Find all links on the target website"""
     visited = set()
@@ -41,7 +40,7 @@ def crawl(base_url: str, max_pages: int = 10) -> list:
 
     return found
 
-# ── 2. COLLECT FORMS ──────────────────────────────────────
+
 def get_forms(url: str) -> list:
     """Extract all forms from a page"""
     try:
@@ -63,7 +62,6 @@ def get_form_details(form) -> dict:
         })
     return details
 
-# ── 3. SECURITY TESTS ─────────────────────────────────────
 def test_xss(url: str, form, form_details: dict) -> dict | None:
     """Test a form for XSS vulnerability"""
     payload = '<script>alert("XSS")</script>'
@@ -148,19 +146,19 @@ def check_security_headers(url: str) -> list:
         logger.debug(f"Security header check failed for {url}: {e}")
     return vulnerabilities
 
-# ── 4. MAIN SCAN FUNCTION ─────────────────────────────────
+
 def run_dast_scan(target_url: str) -> list:
     """Run full DAST scan on a target URL"""
     vulnerabilities = []
-    seen = set()  # track duplicates
+    seen = set()  
 
-    # Step 1 - Check security headers
+    
     vulnerabilities.extend(check_security_headers(target_url))
 
-    # Step 2 - Crawl the site
+    
     pages = crawl(target_url)
 
-    # Step 3 - Test each page's forms
+   
     for page_url in pages:
         forms = get_forms(page_url)
         for form in forms:

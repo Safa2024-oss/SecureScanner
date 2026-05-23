@@ -12,7 +12,6 @@ from config import APP_URL
 from urllib.parse import urlparse
 from routes.enterprise import router as enterprise_router
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -28,7 +27,7 @@ app = FastAPI(
     redoc_url="/api/redoc"
 )
 
-# Parse allowed origins from config
+
 parsed = urlparse(APP_URL)
 origins = [
     APP_URL,
@@ -38,7 +37,6 @@ origins = [
     "http://localhost:5174",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
-    # Add production domains as needed
     "https://securescan.com",
     "https://app.securescan.com",
 ]
@@ -69,7 +67,7 @@ async def shutdown():
     logger.info("Database connection closed")
 
 
-# Include all routers
+
 app.include_router(auth_router)
 app.include_router(scan_router)
 app.include_router(history_router)
@@ -152,16 +150,6 @@ def get_version():
             "Usage-based pricing"
         ]
     }
-
-
-# Optional: Add rate limiting middleware (requires slowapi)
-# from slowapi import Limiter, _rate_limit_exceeded_handler
-# from slowapi.util import get_remote_address
-# from slowapi.errors import RateLimitExceeded
-# 
-# limiter = Limiter(key_func=get_remote_address)
-# app.state.limiter = limiter
-# app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 if __name__ == "__main__":
