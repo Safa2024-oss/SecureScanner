@@ -19,14 +19,14 @@ async def sast_route(
     project_id: Optional[str] = None,
     user=Depends(get_current_user)
 ):
-    # Verify project access if provided
+    
     project_name = None
     if project_id:
         project = await enterprise_projects_collection.find_one({"_id": ObjectId(project_id)})
         if not project:
             raise HTTPException(400, "Project not found")
         
-        # Check if user belongs to the same organization
+       
         full_user = await users_collection.find_one({"_id": ObjectId(user["id"])})
         if full_user.get("organization_id") != project.get("organization_id"):
             raise HTTPException(403, "You don't have access to this project")
@@ -43,7 +43,7 @@ async def sast_route(
 
 @router.post("/git")
 async def git_route(request: GitScanRequest, user=Depends(get_current_user)):
-    # Verify project access if provided
+    
     project_name = None
     if request.project_id:
         project = await enterprise_projects_collection.find_one({"_id": ObjectId(request.project_id)})
@@ -66,7 +66,7 @@ async def git_route(request: GitScanRequest, user=Depends(get_current_user)):
 
 @router.post("/dast")
 async def dast_route(request: DASTRequest, user=Depends(get_current_user)):
-    # Verify project access if provided
+    
     project_name = None
     if request.project_id:
         project = await enterprise_projects_collection.find_one({"_id": ObjectId(request.project_id)})

@@ -41,7 +41,7 @@ async def register(request: RegisterRequest):
             detail="Email already registered"
         )
 
-    # Generate and store verification token
+    
     token = secrets.token_urlsafe(32)
     await verification_tokens_collection.insert_one({
         "user_id": str(user["_id"]),
@@ -50,7 +50,7 @@ async def register(request: RegisterRequest):
         "expires_at": datetime.utcnow() + timedelta(hours=24)
     })
 
-    # Send verification email
+   
     send_verification_email(request.email, request.name, token)
 
     return {"message": "Account created successfully. Please check your email to verify your account."}
@@ -65,7 +65,7 @@ async def verify_email(token: str):
             detail="Invalid verification token"
         )
 
-    # Idempotent behavior: if the token was already consumed, treat as success.
+   
     if doc.get("used", False):
         return {"message": "Email already verified. You can log in."}
 
@@ -75,13 +75,13 @@ async def verify_email(token: str):
             detail="Token expired. Please register again."
         )
 
-    # Mark user as verified
+    
     await users_collection.update_one(
         {"_id": ObjectId(doc["user_id"])},
         {"$set": {"verified": True, "verified_at": datetime.utcnow()}}
     )
 
-    # Mark token as consumed (instead of deleting) so repeated requests stay successful.
+    
     await verification_tokens_collection.update_one(
         {"token": token},
         {"$set": {"used": True, "used_at": datetime.utcnow()}}
@@ -98,14 +98,14 @@ async def login(request: LoginRequest):
             detail="Invalid email or password"
         )
 
-    # Block unverified users
+   
     if not user.get("verified", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Email not verified. Please check your inbox or request a new verification link."
         )
 
-    # Check if user is banned
+    
     if user.get("status") == "banned":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -118,7 +118,7 @@ async def login(request: LoginRequest):
         "role": user.get("role", "user")
     })
 
-    # Send login notification
+   
     send_login_notification(request.email, user["name"])
 
     return {
@@ -132,7 +132,7 @@ async def login(request: LoginRequest):
 async def forgot_password(request: ForgotPasswordRequest):
     user = await get_user_by_email(request.email)
 
-    # Always return success (security best practice)
+    
     if user:
         token = secrets.token_urlsafe(32)
         await password_reset_tokens.insert_one({
@@ -153,7 +153,7 @@ async def reset_password(request: ResetPasswordRequest):
             detail="Password must be at least 8 characters"
         )
 
-    # Validate token
+   
     doc = await password_reset_tokens.find_one({"token": request.token})
     if not doc:
         raise HTTPException(
@@ -167,7 +167,7 @@ async def reset_password(request: ResetPasswordRequest):
             detail="Token expired"
         )
 
-    # Update password
+   
     from services.auth_service import hash_password
     hashed = hash_password(request.new_password)
     await users_collection.update_one(
@@ -175,7 +175,7 @@ async def reset_password(request: ResetPasswordRequest):
         {"$set": {"password": hashed, "updated_at": datetime.utcnow()}}
     )
 
-    # Delete used token
+    
     await password_reset_tokens.delete_one({"token": request.token})
 
     return {"message": "Password reset successfully. You can now log in."}
@@ -184,12 +184,12 @@ async def reset_password(request: ResetPasswordRequest):
 async def resend_verification(request: ResendVerificationRequest):
     user = await get_user_by_email(request.email)
 
-    # Always return success (prevent email enumeration)
+   
     if user and not user.get("verified", False):
         # Delete old tokens
         await verification_tokens_collection.delete_many({"user_id": str(user["_id"])})
 
-        # Create new token
+       
         token = secrets.token_urlsafe(32)
         await verification_tokens_collection.insert_one({
             "user_id": str(user["_id"]),

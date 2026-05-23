@@ -94,10 +94,10 @@ async def sast_scan(files: list[UploadFile], user_id: str, user_role: str = "use
                 f.write(content)
             uploaded_paths.append(file_path)
 
-        # Run blocking SAST scan in thread pool
+        
         scan_result = await asyncio.to_thread(_run_sast_sync, uploaded_paths, temp_dir)
 
-        # Run AI analysis in thread pool (blocking)
+        
         all_vulnerabilities = await asyncio.to_thread(
             analyze_vulnerabilities, scan_result["vulnerabilities"]
         )
@@ -140,7 +140,7 @@ async def dast_scan(request: DASTRequest, user_id: str, user_role: str = "user",
     final_project_id = project_id or request.project_id
     final_project_name = project_name
 
-    # If project_id provided but no name, fetch it
+    
     if final_project_id and not final_project_name:
         project = await enterprise_projects_collection.find_one({"_id": ObjectId(final_project_id)})
         if project:
@@ -162,10 +162,10 @@ async def dast_scan(request: DASTRequest, user_id: str, user_role: str = "user",
             ),
         )
 
-    # Run blocking DAST scan in thread pool
+   
     vulnerabilities = await asyncio.to_thread(run_dast_scan, url)
 
-    # Run AI analysis in thread pool
+    
     vulnerabilities = await asyncio.to_thread(analyze_vulnerabilities, vulnerabilities)
 
     result = {
@@ -198,11 +198,11 @@ class GitScanRequest(BaseModel):
 async def git_scan(request: GitScanRequest, user_id: str, user_role: str = "user", project_id: Optional[str] = None, project_name: Optional[str] = None):
     """Git repository scan with usage limit checking and project assignment"""
     url = request.repo_url
-    # Use passed project_id or from request
+    
     final_project_id = project_id or request.project_id
     final_project_name = project_name
 
-    # If project_id provided but no name, fetch it
+    
     if final_project_id and not final_project_name:
         project = await enterprise_projects_collection.find_one({"_id": ObjectId(final_project_id)})
         if project:
@@ -224,7 +224,7 @@ async def git_scan(request: GitScanRequest, user_id: str, user_role: str = "user
             ),
         )
 
-    # Run blocking git scan in thread pool
+    
     scan_result = await asyncio.to_thread(clone_and_scan, url)
 
     if not scan_result["success"]:
@@ -233,7 +233,7 @@ async def git_scan(request: GitScanRequest, user_id: str, user_role: str = "user
             detail=scan_result.get("error", "Failed to clone repository")
         )
 
-    # Run AI analysis in thread pool
+    
     vulnerabilities = await asyncio.to_thread(
         analyze_vulnerabilities, scan_result["vulnerabilities"]
     )
