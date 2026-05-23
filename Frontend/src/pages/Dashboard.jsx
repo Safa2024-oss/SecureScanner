@@ -10,6 +10,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const user = JSON.parse(localStorage.getItem('user') || '{}')
   const isAdmin = user?.role === 'admin'
+  const isEnterpriseMember = !!user?.organization_id
   const [stats, setStats] = useState({ total_scans: 0, total_vulnerabilities: 0, critical: 0, high: 0 })
   const [recentScans, setRecentScans] = useState([])
   const [subscription, setSubscription] = useState(null)
@@ -35,7 +36,7 @@ export default function Dashboard() {
         setStats(statsData)
         setSubscription(subData)
         setUsage(usageData)
-        // Handle both old array and new paginated format
+        
         const scans = Array.isArray(historyData) ? historyData : (historyData.data || [])
         setRecentScans(scans.slice(0, 5))
       } catch (err) {
@@ -53,7 +54,12 @@ export default function Dashboard() {
     { label: 'Critical Issues', value: stats.critical, icon: Clock, color: 'yellow' },
     { label: 'High Issues', value: stats.high, icon: CheckCircle2, color: 'green' },
   ]
-  const scanUsagePct = usage?.scans_limit ? Math.min(100, Math.round((usage.scans_used / usage.scans_limit) * 100)) : 0
+  
+  // Show unlimited for enterprise members, otherwise calculate percentage
+  const showUnlimited = isEnterpriseMember || usage?.scans_limit === 999999
+  const scanUsagePct = usage?.scans_limit && usage.scans_limit !== 999999 
+    ? Math.min(100, Math.round((usage.scans_used / usage.scans_limit) * 100)) 
+    : 0
 
   return (
     <div className="dashboard">
@@ -62,7 +68,7 @@ export default function Dashboard() {
         <p className="page-subtitle">Overview of your security scans and findings</p>
       </div>
 
-      {/* Stats */}
+      {}
       <div className="stats-grid">
         {statCards.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="stat-card card">
@@ -77,8 +83,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Subscription visibility */}
-      {subscription && !isAdmin && (
+      {}
+      {subscription && !isAdmin && !isEnterpriseMember && (
         <div className="card" style={{ marginTop: 16, marginBottom: 24 }}>
           <div className="card-header">
             <span className="card-title">Subscription</span>
@@ -115,11 +121,13 @@ export default function Dashboard() {
               <div style={{ marginTop: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                   <span>Scan quota</span>
-                  <strong>{usage.scans_used}/{usage.scans_limit}</strong>
+                  <strong>{showUnlimited ? 'Unlimited' : `${usage.scans_used}/${usage.scans_limit}`}</strong>
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${scanUsagePct}%` }} />
-                </div>
+                {!showUnlimited && (
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${scanUsagePct}%` }} />
+                  </div>
+                )}
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -130,7 +138,34 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Quick actions */}
+      {}
+      {isEnterpriseMember && usage && (
+        <div className="card" style={{ marginTop: 16, marginBottom: 24 }}>
+          <div className="card-header">
+            <span className="card-title">Enterprise Access</span>
+          </div>
+          <div className="card-body">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+              <div className="stat-icon stat-icon--purple">
+                <ShieldAlert size={16} />
+              </div>
+              <div>
+                <div style={{ fontWeight: 600 }}>Enterprise Plan Active</div>
+                <div style={{ fontSize: 12, color: 'var(--text3)' }}>
+                  You have unlimited scans as part of your organization.
+                </div>
+              </div>
+            </div>
+            {usage.scans_used > 0 && (
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text3)' }}>
+                Scans performed this month: <strong>{usage.scans_used}</strong>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {}
       <div className="quick-actions">
         <button className="action-card" onClick={() => navigate('/sast')}>
           <div className="action-icon action-icon--blue">
@@ -154,7 +189,7 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Recent scans */}
+      {}
       <div className="card">
         <div className="card-header">
           <span className="card-title">Recent Scans</span>

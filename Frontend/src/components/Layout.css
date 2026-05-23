@@ -5,7 +5,6 @@
   position: relative;
 }
 
-/* ── SIDEBAR ── */
 .sidebar {
   width: var(--nav-w);
   background: linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
@@ -189,7 +188,7 @@
   color: #fca5a5;
 }
 
-/* ── MAIN ── */
+
 .main-content {
   flex: 1;
   overflow-y: auto;
@@ -220,7 +219,6 @@
   z-index: 1;
 }
 
-/* ── PAGE HEADER ── */
 .page-header {
   margin-bottom: 28px;
   animation: fadeIn 0.4s ease;
@@ -239,7 +237,7 @@
   margin-top: 4px;
 }
 
-/* ── CARD ── */
+
 .card {
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
@@ -272,7 +270,7 @@
   padding: 20px 24px 24px;
 }
 
-/* ── BADGES ── */
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -291,7 +289,7 @@
 .badge-info { background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb; }
 .badge-success { background: linear-gradient(135deg, #ecfdf5, #d1fae5); color: #059669; }
 
-/* ── BUTTON ── */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -375,14 +373,14 @@
   background: white;
 }
 
-/* ── DIVIDER ── */
+
 .divider {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--border), transparent);
   margin: 20px 0;
 }
 
-/* ── EMPTY STATE ── */
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -398,7 +396,7 @@
 .empty-state h3 { font-size: 15px; font-weight: 500; color: var(--text2); }
 .empty-state p { font-size: 13px; }
 
-/* ── MOBILE RESPONSIVE ───────────────────────────────────── */
+
 @media (max-width: 768px) {
   .layout {
     flex-direction: column;
